@@ -19,8 +19,6 @@
 #include "nnet.h"
 #include "split.h"
 
-#define OPT_TEST_FOR_ONE_RUN 1
-
 static struct argp_option options[] = {
     {"network", 'n', "NETWORK", 0, "The network to verify"},
     {"input", 'x', "INPUT", 0, "The seed input for verification"},
@@ -31,8 +29,6 @@ static struct argp_option options[] = {
     {"gamma_static", 's', 0, 0, "The output bounds for verification should not depend on the original output"},
     {0, 0, 0, 0, "Logging options:"},
     {"verbose", 'v', 0, 0, "Produce verbose output"},
-    {0, 0, 0, 0, "Search options:"},
-    {"test-for-one-run", OPT_TEST_FOR_ONE_RUN, 0, 0, "Estimate output range without split"},
     {0}};
 
 struct arguments
@@ -83,9 +79,6 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state)
     case 'v':
         NEED_PRINT = 1;
         break;
-    case OPT_TEST_FOR_ONE_RUN:
-        NEED_FOR_ONE_RUN = 1;
-        break;
     case ARGP_KEY_END:
     case ARGP_NO_ARGS:
         if (arguments->network == NULL || arguments->input == NULL)
@@ -115,11 +108,11 @@ int main(int argc, char *argv[])
     arguments.gamma_static = 0;
     argp_parse(&argp, argc, argv, 0, 0, &arguments);
 
-    printf("\n\nnetwork: %s\n", arguments.network);
+    printf("network: %s\n", arguments.network);
     printf("input: %s\n", arguments.input);
     printf("output: %s\n", arguments.output);
     printf("property: %d\n", arguments.property);
-    printf("epsilon: %f\n", arguments.epsilon);
+    printf("epsilon: %f\n\n", arguments.epsilon);
 
     openblas_set_num_threads(1);
     gettimeofday(&start_time, NULL);
@@ -135,13 +128,13 @@ int main(int argc, char *argv[])
     int maxLayerSize = nnet->maxLayerSize;
 
     struct Matrix *input_matrix = Matrix_new(1, inputSize);
+    struct Matrix *output_matrix = Matrix_new(outputSize, 1);
     struct Interval *input_interval = Interval_new(1, inputSize);
     struct Interval *output_interval = Interval_new(outputSize, 1);
     struct Interval *output_constraint = Interval_new(outputSize, 1);
     nnet->output_constraint = output_constraint;
 
     int wrong_node_length = 0;
-    int full_wrong_node_length = 0;
     for (int layer = 1; layer < numLayers; layer++)
     {
         wrong_node_length += nnet->layerSizes[layer];
@@ -159,15 +152,12 @@ int main(int argc, char *argv[])
     ERR_NODE = wrong_node_length;
     wrong_node_length = 0;
 
-    struct SymInterval *sym_interval = SymInterval_new(inputSize, maxLayerSize, ERR_NODE);
-
     load_inputs(arguments.input, inputSize, input_matrix->data);
     initialize_input_interval(input_interval,
                               inputSize,
                               input_matrix->data,
                               arguments.epsilon);
 
-    struct Matrix *output_matrix = Matrix_new(outputSize, 1);
     evaluate_conv(nnet, input_matrix, output_matrix);
     if (inputSize < 10)
     {
@@ -208,14 +198,14 @@ int main(int argc, char *argv[])
     int isOverlap = check1(nnet, output_matrix);
     if (!isOverlap)
     {
+        struct SymInterval *sym_interval = SymInterval_new(inputSize, maxLayerSize, ERR_NODE);
         forward_prop_interval_equation_linear_conv(nnet,
                                                    input_interval,
                                                    output_interval,
                                                    grad,
                                                    sym_interval,
                                                    wrong_nodes,
-                                                   &wrong_node_length,
-                                                   &full_wrong_node_length);
+                                                   &wrong_node_length);
         ERR_NODE = wrong_node_length;
         destroy_SymInterval(sym_interval);
         sym_interval = SymInterval_new(inputSize, maxLayerSize, ERR_NODE);
@@ -230,20 +220,15 @@ int main(int argc, char *argv[])
         sort_layers(nnet->numLayers, nnet->layerSizes,
                     wrong_node_length, wrong_nodes);
 
-        printf("total wrong nodes: %d, wrong nodes in"
-               "fully connect layers: %d\n",
-               wrong_node_length,
-               full_wrong_node_length);
+        printf("total wrong nodes: %d\n", wrong_node_length);
 
         isOverlap = check(nnet, output_interval);
         if (isOverlap)
         {
             printf("Regular Mode (No CHECK_ADV_MODE)\n");
 
-            lprec *lp;
-            lp = make_lp(0, inputSize);
+            lprec *lp = make_lp(0, inputSize);
             set_verbose(lp, IMPORTANT);
-
             set_input_constraints(input_interval, lp, inputSize);
             set_presolve(lp, PRESOLVE_LINDEP, get_presolveloops(lp));
 
@@ -258,6 +243,7 @@ int main(int argc, char *argv[])
                                                depth);
             delete_lp(lp);
         }
+        destroy_SymInterval(sym_interval);
     }
     else
     {
@@ -281,12 +267,12 @@ int main(int argc, char *argv[])
     {
         printf("Unknown.\n");
     }
-    printf("time: %f \n\n", time_spent);
+    printf("time: %f\n", time_spent);
 
     destroy_conv_network(nnet);
     destroy_Matrix(input_matrix);
     destroy_Matrix(output_matrix);
     destroy_Interval(input_interval);
     destroy_Interval(output_interval);
-    destroy_SymInterval(sym_interval);
+    destroy_Interval(output_constraint);
 }

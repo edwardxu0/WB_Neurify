@@ -12,7 +12,6 @@
 #include "nnet.h"
 
 long long ERR_NODE = 0;
-int CHECK_ADV_MODE = 0;
 
 struct timeval start_time, finish_time;
 
@@ -107,6 +106,14 @@ struct NNet *load_conv_network(const char *filename)
         {
             nnet->convLayer[cl][i] = atoi(record);
             record = strtok(NULL, ",\n");
+        }
+        if (record != NULL)
+        {
+            nnet->convLayer[cl][4] += atoi(record);
+        }
+        else
+        {
+            nnet->convLayer[cl][4] *= 2;
         }
     }
 
@@ -400,21 +407,10 @@ void set_input_constraints(struct Interval *input,
                            lprec *lp,
                            int inputSize)
 {
-    REAL row[inputSize + 1];
-    int colno[inputSize + 1];
-    memset(row, 0, inputSize * sizeof(float));
-    set_add_rowmode(lp, TRUE);
     for (int var = 1; var < inputSize + 1; var++)
     {
-        memset(colno, 0, inputSize * sizeof(int));
-        colno[0] = var;
-        row[0] = 1;
-        add_constraintex(lp, 1, row, colno, LE,
-                         input->upper_matrix->data[var - 1]);
-        add_constraintex(lp, 1, row, colno, GE,
-                         input->lower_matrix->data[var - 1]);
+        set_bounds(lp, var, input->lower_matrix->data[var - 1], input->upper_matrix->data[var - 1]);
     }
-    set_add_rowmode(lp, FALSE);
 }
 
 void set_node_constraints(lprec *lp,
@@ -557,8 +553,6 @@ void load_inputs(const char *input_path, int inputSize, float *input)
 
 int evaluate_conv(struct NNet *network, struct Matrix *input, struct Matrix *output)
 {
-    int i, j, layer;
-
     struct NNet *nnet = network;
     int numLayers = nnet->numLayers;
     int inputSize = nnet->inputSize;
@@ -572,28 +566,25 @@ int evaluate_conv(struct NNet *network, struct Matrix *input, struct Matrix *out
     float z[nnet->maxLayerSize];
     float a[nnet->maxLayerSize];
 
-    for (i = 0; i < inputSize; i++)
+    for (int i = 0; i < inputSize; i++)
     {
         z[i] = input->data[i];
     }
 
-    int out_channel = 0, in_channel = 0, kernel_size = 0;
-    int stride = 0, padding = 0;
-
-    for (layer = 0; layer < (numLayers); layer++)
+    for (int layer = 0; layer < numLayers; layer++)
     {
         memset(a, 0, sizeof(float) * maxLayerSize);
 
         if (nnet->layerTypes[layer] == 0)
         {
-            for (i = 0; i < nnet->layerSizes[layer + 1]; i++)
+            for (int i = 0; i < nnet->layerSizes[layer + 1]; i++)
             {
                 float **weights = matrix[layer][0];
                 float **biases = matrix[layer][1];
                 tempVal = 0.0;
 
                 //Perform weighted summation of inputs
-                for (j = 0; j < nnet->layerSizes[layer]; j++)
+                for (int j = 0; j < nnet->layerSizes[layer]; j++)
                 {
                     tempVal += z[j] * weights[i][j];
                 }
@@ -608,24 +599,25 @@ int evaluate_conv(struct NNet *network, struct Matrix *input, struct Matrix *out
                 }
                 a[i] = tempVal;
             }
-            for (j = 0; j < maxLayerSize; j++)
+            for (int j = 0; j < maxLayerSize; j++)
             {
                 z[j] = a[j];
             }
         }
         else
         {
-            out_channel = nnet->convLayer[layer][0];
-            in_channel = nnet->convLayer[layer][1];
-            kernel_size = nnet->convLayer[layer][2];
-            stride = nnet->convLayer[layer][3];
-            padding = nnet->convLayer[layer][4];
+            int out_channel = nnet->convLayer[layer][0];
+            int in_channel = nnet->convLayer[layer][1];
+            int kernel_size = nnet->convLayer[layer][2];
+            int stride = nnet->convLayer[layer][3];
+            int padding = nnet->convLayer[layer][4];
+            int lt_pad = padding / 2;
             //size is the input size in each channel
             int size = sqrt(nnet->layerSizes[layer] / in_channel);
             //padding size is the input size after padding
-            int padding_size = size + 2 * padding;
+            int padding_size = size + padding;
             //out_size is the output size in each channel after kernel
-            int out_size = ceil((padding_size + 1 - kernel_size) / stride);
+            int out_size = ceil((padding_size + 1.0 - kernel_size) / stride);
 
             float *z_new = (float *)malloc(sizeof(float) * padding_size * padding_size * in_channel);
             memset(z_new, 0, sizeof(float) * padding_size * padding_size * in_channel);
@@ -635,7 +627,7 @@ int evaluate_conv(struct NNet *network, struct Matrix *input, struct Matrix *out
                 {
                     for (int w = 0; w < size; w++)
                     {
-                        z_new[ic * padding_size * padding_size + padding_size * (h + padding) + w + padding] =
+                        z_new[ic * padding_size * padding_size + padding_size * (h + lt_pad) + w + lt_pad] =
                             z[ic * size * size + size * h + w];
                     }
                 }
@@ -664,7 +656,7 @@ int evaluate_conv(struct NNet *network, struct Matrix *input, struct Matrix *out
                     }
                 }
             }
-            for (j = 0; j < maxLayerSize; j++)
+            for (int j = 0; j < maxLayerSize; j++)
             {
                 if (a[j] < 0)
                 {
@@ -676,7 +668,7 @@ int evaluate_conv(struct NNet *network, struct Matrix *input, struct Matrix *out
         }
     }
 
-    for (i = 0; i < outputSize; i++)
+    for (int i = 0; i < outputSize; i++)
     {
         output->data[i] = a[i];
     }
@@ -848,12 +840,13 @@ void sym_conv_layer(struct SymInterval *sInterval, struct NNet *nnet,
     int kernel_size = nnet->convLayer[layer][2];
     int stride = nnet->convLayer[layer][3];
     int padding = nnet->convLayer[layer][4];
+    int lt_pad = padding / 2;
     //size is the input size in each channel
     int size = sqrt(nnet->layerSizes[layer] / in_channel);
     //padding size is the input size after padding
-    int padding_size = size + 2 * padding;
+    int padding_size = size + padding;
     //out_size is the output size in each channel after kernel
-    int out_size = ceil((padding_size + 1 - kernel_size) / stride);
+    int out_size = ceil((padding_size + 1.0 - kernel_size) / stride);
 
     float *new_new_equation = (float *)malloc(sizeof(float) *
                                               padding_size * padding_size * in_channel * (inputSize + 1));
@@ -870,13 +863,13 @@ void sym_conv_layer(struct SymInterval *sInterval, struct NNet *nnet,
             {
                 for (int k = 0; k < inputSize + 1; k++)
                 {
-                    long long loc_nn = (ic * padding_size * padding_size + padding_size * (h + padding) + w + padding) * (inputSize + 1) + k;
+                    long long loc_nn = (ic * padding_size * padding_size + padding_size * (h + lt_pad) + w + lt_pad) * (inputSize + 1) + k;
                     long long loc_eq = (ic * size * size + size * h + w) * (inputSize + 1) + k;
                     new_new_equation[loc_nn] = (*sInterval->eq_matrix).data[loc_eq];
                 }
                 for (int k = 0; k < err_row; k++)
                 {
-                    long long loc_nn = (ic * padding_size * padding_size + padding_size * (h + padding) + w + padding) * (ERR_NODE) + k;
+                    long long loc_nn = (ic * padding_size * padding_size + padding_size * (h + lt_pad) + w + lt_pad) * (ERR_NODE) + k;
                     long long loc_eq = (ic * size * size + size * h + w) * (ERR_NODE) + k;
                     new_new_equation_err[loc_nn] = (*sInterval->err_matrix).data[loc_eq];
                 }
@@ -1122,8 +1115,7 @@ int forward_prop_interval_equation_linear_conv(struct NNet *network,
                                                float *grad,
                                                struct SymInterval *sInterval,
                                                int *wrong_nodes,
-                                               int *wrong_node_length,
-                                               int *full_wrong_node_length)
+                                               int *wrong_node_length)
 {
     int node_cnt = 0;
 

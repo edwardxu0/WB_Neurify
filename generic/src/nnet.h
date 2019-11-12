@@ -104,7 +104,6 @@ int forward_prop_interval_equation_linear_conv(struct NNet *network,
                                                float *grad,
                                                struct SymInterval *sInterval,
                                                int *wrong_nodes,
-                                               int *wrong_node_length,
-                                               int *full_wrong_node_length);
+                                               int *wrong_node_length);
 
 #endif

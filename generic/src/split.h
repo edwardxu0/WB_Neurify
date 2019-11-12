@@ -21,19 +21,14 @@
 
 #include "nnet.h"
 
-#define PROGRESS_DEPTH 12
-
 extern int NEED_PRINT;
-extern int NEED_FOR_ONE_RUN;
-extern int CHECK_ADV_MODE;
-
-extern int MAX_DEPTH;
-extern int input_depth;
 
 extern int adv_found;
 extern int can_t_prove;
 
-extern int progress;
+extern int MAX_DEPTH;
+
+#define PROGRESS_DEPTH 12
 extern int progress_list[PROGRESS_DEPTH];
 extern int total_progress[PROGRESS_DEPTH];
 
