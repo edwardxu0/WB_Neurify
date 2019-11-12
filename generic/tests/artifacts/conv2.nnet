@@ -1,0 +1,30 @@
+// FORMAT::
+// numLayers,inputSize,outputSize,maxLayerSize
+// layerSize_0,layerSize_1,...,layerSize_{numLayers}
+// layerType_1,layerType_2,...,layerType_{numLayers} // (0: fully connected, 1: convolutional)
+// foreach convolutional layer: numOutChannels,numInChannels,kernelSize,stride,padding,[padding]
+// foreach layer: weights,bias
+2,72,9,72
+72,9,9
+1,0
+1,2,3,2,0,1,
+-8,-7,-6,-5,-4,-3,-2,-1,0,1,2,3,4,5,6,7,8,9,
+1.0,
+1.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,
+0.0,1.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,
+0.0,0.0,1.0,0.0,0.0,0.0,0.0,0.0,0.0,
+0.0,0.0,0.0,1.0,0.0,0.0,0.0,0.0,0.0,
+0.0,0.0,0.0,0.0,1.0,0.0,0.0,0.0,0.0,
+0.0,0.0,0.0,0.0,0.0,1.0,0.0,0.0,0.0,
+0.0,0.0,0.0,0.0,0.0,0.0,1.0,0.0,0.0,
+0.0,0.0,0.0,0.0,0.0,0.0,0.0,1.0,0.0,
+0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,1.0,
+0.0,
+0.0,
+0.0,
+0.0,
+0.0,
+0.0,
+0.0,
+0.0,
+0.0,

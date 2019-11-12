@@ -157,6 +157,134 @@ START_TEST(test_evaluate_conv_example2)
 }
 END_TEST
 
+START_TEST(test_evaluate_conv_convolution)
+{
+    struct NNet *nnet = load_conv_network("artifacts/conv1.nnet");
+
+    struct Matrix *input = Matrix_new(1, nnet->inputSize);
+    struct Matrix *output = Matrix_new(nnet->outputSize, 1);
+
+    float expected_output[nnet->outputSize];
+    expected_output[0] = 225.0;
+    expected_output[1] = 381.0;
+    expected_output[2] = 405.0;
+    expected_output[3] = 285.0;
+    expected_output[4] = 502.0;
+    expected_output[5] = 787.0;
+    expected_output[6] = 796.0;
+    expected_output[7] = 532.0;
+    expected_output[8] = 550.0;
+    expected_output[9] = 823.0;
+    expected_output[10] = 832.0;
+    expected_output[11] = 532.0;
+    expected_output[12] = 301.0;
+    expected_output[13] = 429.0;
+    expected_output[14] = 417.0;
+    expected_output[15] = 249.0;
+
+    for (int i = 0; i < nnet->inputSize; i++)
+    {
+        input->data[i] = (i + 1) - 16;
+    }
+
+    evaluate_conv(nnet, input, output);
+    for (int i = 0; i < nnet->outputSize; i++)
+    {
+        assert_float_close(output->data[i], expected_output[i], 1e-6);
+    }
+
+    destroy_conv_network(nnet);
+    destroy_Matrix(input);
+    destroy_Matrix(output);
+
+    nnet = load_conv_network("artifacts/conv2.nnet");
+
+    input = Matrix_new(1, nnet->inputSize);
+    output = Matrix_new(nnet->outputSize, 1);
+
+    float expected_output2[nnet->outputSize];
+    expected_output2[0] = 1597.0;
+    expected_output2[1] = 1615.0;
+    expected_output2[2] = 1120.0;
+    expected_output2[3] = 1705.0;
+    expected_output2[4] = 1723.0;
+    expected_output2[5] = 1120.0;
+    expected_output2[6] = 903.0;
+    expected_output2[7] = 879.0;
+    expected_output2[8] = 513.0;
+
+    for (int i = 0; i < nnet->inputSize; i++)
+    {
+        input->data[i] = (i + 1) - 36;
+    }
+
+    evaluate_conv(nnet, input, output);
+    for (int i = 0; i < nnet->outputSize; i++)
+    {
+        assert_float_close(output->data[i], expected_output2[i], 1e-6);
+    }
+
+    destroy_conv_network(nnet);
+    destroy_Matrix(input);
+    destroy_Matrix(output);
+}
+END_TEST
+
+START_TEST(test_evaluate_vs_forward)
+{
+    struct NNet *nnet = load_conv_network("artifacts/example2.nnet");
+    int inputSize = nnet->inputSize;
+    int outputSize = nnet->outputSize;
+    int maxLayerSize = nnet->maxLayerSize;
+
+    struct Matrix *input = Matrix_new(1, inputSize);
+    struct Matrix *output = Matrix_new(outputSize, 1);
+
+    struct Interval *output_interval = Interval_new(outputSize, 1);
+
+    int num_nodes = 0;
+    for (int l = 1; l < nnet->numLayers; l++)
+    {
+        num_nodes += nnet->layerSizes[l];
+    }
+    ERR_NODE = num_nodes;
+    struct SymInterval *sym_interval = SymInterval_new(inputSize, maxLayerSize, ERR_NODE);
+    struct Interval *input_interval = Interval_new(1, inputSize);
+    int wrong_nodes[num_nodes];
+
+    for (int j = 0; j < 15; j++)
+    {
+        int wrong_node_length = 0;
+        for (int i = 0; i < inputSize; i++)
+        {
+            input->data[i] = (float)rand() / (float)(RAND_MAX / 1000.0);
+        }
+        initialize_input_interval(input_interval, inputSize, input->data, 0.0);
+        forward_prop_interval_equation_linear_conv(
+            nnet,
+            input_interval,
+            output_interval,
+            NULL,
+            sym_interval,
+            wrong_nodes,
+            &wrong_node_length);
+        evaluate_conv(nnet, input, output);
+        for (int i = 0; i < outputSize; i++)
+        {
+            assert_float_close(output->data[i], output_interval->lower_matrix->data[i], 1e-6);
+            assert_float_close(output->data[i], output_interval->upper_matrix->data[i], 1e-6);
+        }
+    }
+
+    destroy_SymInterval(sym_interval);
+    destroy_Interval(input_interval);
+    destroy_Interval(output_interval);
+    destroy_conv_network(nnet);
+    destroy_Matrix(input);
+    destroy_Matrix(output);
+}
+END_TEST
+
 START_TEST(test_sort)
 {
     {
@@ -328,6 +456,7 @@ START_TEST(test_initialize_input_interval)
                                1e-6);
         }
     }
+    destroy_Interval(interval);
 }
 END_TEST
 
@@ -357,6 +486,260 @@ START_TEST(test_initialize_output_constraint_not_exist)
 }
 END_TEST
 
+START_TEST(test_set_input_constraints)
+{
+    {
+        int inputSize = 5;
+        float input[5] = {0.2, 0.5, 0.6, 0.8, 0.8};
+        float epsilon = 0.1;
+        struct Interval *input_interval = Interval_new(1, inputSize);
+        initialize_input_interval(input_interval, inputSize, input, epsilon);
+        lprec *lp = make_lp(0, inputSize);
+        set_verbose(lp, CRITICAL);
+        set_input_constraints(input_interval, lp, inputSize);
+        ck_assert_int_eq(solve(lp), 0);
+        destroy_Interval(input_interval);
+        delete_lp(lp);
+    }
+
+    {
+        int inputSize = 5;
+        float input[5] = {0.2, 0.5, 0.6, 0.8, 0.8};
+        float epsilon = 1.1;
+        struct Interval *input_interval = Interval_new(1, inputSize);
+        initialize_input_interval(input_interval, inputSize, input, epsilon);
+        lprec *lp = make_lp(0, inputSize);
+        set_verbose(lp, CRITICAL);
+        set_input_constraints(input_interval, lp, inputSize);
+        ck_assert_int_eq(solve(lp), 0);
+        destroy_Interval(input_interval);
+        delete_lp(lp);
+    }
+
+    {
+        int inputSize = 5;
+        float input[5] = {-1.0, -0.5, 0.6, 0.8, -0.1};
+        float epsilon = 0.1;
+        struct Interval *input_interval = Interval_new(1, inputSize);
+        initialize_input_interval(input_interval, inputSize, input, epsilon);
+        lprec *lp = make_lp(0, inputSize);
+        set_verbose(lp, CRITICAL);
+        set_input_constraints(input_interval, lp, inputSize);
+        ck_assert_int_eq(solve(lp), 0);
+        destroy_Interval(input_interval);
+        delete_lp(lp);
+    }
+}
+END_TEST
+
+START_TEST(test_forward_prop_interval_equation_linear_conv_example1)
+{
+    struct NNet *nnet = load_conv_network("artifacts/example1.nnet");
+    int inputSize = nnet->inputSize;
+    int outputSize = nnet->outputSize;
+    int maxLayerSize = nnet->maxLayerSize;
+
+    float input[inputSize];
+    load_inputs("artifacts/test_inputs/example1.center", inputSize, input);
+    struct Interval *input_interval = Interval_new(1, inputSize);
+    initialize_input_interval(input_interval, inputSize, input, 1);
+
+    struct Interval *output_interval = Interval_new(outputSize, 1);
+
+    int num_nodes = 4;
+    ERR_NODE = num_nodes;
+    struct SymInterval *sym_interval = SymInterval_new(inputSize, maxLayerSize, ERR_NODE);
+    int wrong_nodes[num_nodes];
+    int wrong_node_length = 0;
+
+    forward_prop_interval_equation_linear_conv(
+        nnet,
+        input_interval,
+        output_interval,
+        NULL,
+        sym_interval,
+        wrong_nodes,
+        &wrong_node_length);
+    ck_assert_int_eq(wrong_node_length, num_nodes);
+    ck_assert(output_interval->lower_matrix->data[0] <= 1.0);
+    ck_assert(output_interval->lower_matrix->data[1] <= 0.0);
+    ck_assert(output_interval->upper_matrix->data[0] >= 5.0);
+    ck_assert(output_interval->upper_matrix->data[1] >= 2.0);
+
+    destroy_Interval(output_interval);
+
+    float grad[wrong_node_length];
+    wrong_node_length = 0;
+    output_interval = Interval_new(outputSize, 1);
+    forward_prop_interval_equation_linear_conv(
+        nnet,
+        input_interval,
+        output_interval,
+        grad,
+        sym_interval,
+        wrong_nodes,
+        &wrong_node_length);
+    ck_assert_int_eq(wrong_node_length, num_nodes);
+    ck_assert(output_interval->lower_matrix->data[0] <= 1.0);
+    ck_assert(output_interval->lower_matrix->data[1] <= 0.0);
+    ck_assert(output_interval->upper_matrix->data[0] >= 5.0);
+    ck_assert(output_interval->upper_matrix->data[1] >= 2.0);
+
+    destroy_Interval(output_interval);
+
+    wrong_node_length = 0;
+    output_interval = Interval_new(outputSize, 1);
+    for (int i = 0; i < inputSize; i++)
+    {
+        input[i] = -1;
+    }
+    initialize_input_interval(input_interval, inputSize, input, 0.00);
+    forward_prop_interval_equation_linear_conv(
+        nnet,
+        input_interval,
+        output_interval,
+        NULL,
+        sym_interval,
+        wrong_nodes,
+        &wrong_node_length);
+    ck_assert_int_eq(wrong_node_length, 0);
+    ck_assert(output_interval->lower_matrix->data[0] <= 1.0);
+    ck_assert(output_interval->lower_matrix->data[1] <= 0.0);
+    ck_assert(output_interval->upper_matrix->data[0] >= 1.0);
+    ck_assert(output_interval->upper_matrix->data[1] >= 0.0);
+
+    destroy_Interval(output_interval);
+
+    wrong_node_length = 0;
+    output_interval = Interval_new(outputSize, 1);
+    for (int i = 0; i < inputSize; i++)
+    {
+        input[i] = -1;
+    }
+    initialize_input_interval(input_interval, inputSize, input, 0.00);
+    forward_prop_interval_equation_linear_conv(
+        nnet,
+        input_interval,
+        output_interval,
+        grad,
+        sym_interval,
+        wrong_nodes,
+        &wrong_node_length);
+    ck_assert_int_eq(wrong_node_length, 0);
+    ck_assert(output_interval->lower_matrix->data[0] <= 1.0);
+    ck_assert(output_interval->lower_matrix->data[1] <= 0.0);
+    ck_assert(output_interval->upper_matrix->data[0] >= 1.0);
+    ck_assert(output_interval->upper_matrix->data[1] >= 0.0);
+
+    destroy_Interval(output_interval);
+
+    wrong_node_length = 0;
+    output_interval = Interval_new(outputSize, 1);
+    for (int i = 0; i < inputSize; i++)
+    {
+        input[i] = 1;
+    }
+    initialize_input_interval(input_interval, inputSize, input, 0.00);
+    forward_prop_interval_equation_linear_conv(
+        nnet,
+        input_interval,
+        output_interval,
+        NULL,
+        sym_interval,
+        wrong_nodes,
+        &wrong_node_length);
+    ck_assert_int_eq(wrong_node_length, 0);
+    ck_assert(output_interval->lower_matrix->data[0] <= 5.0);
+    ck_assert(output_interval->lower_matrix->data[1] <= 2.0);
+    ck_assert(output_interval->upper_matrix->data[0] >= 5.0);
+    ck_assert(output_interval->upper_matrix->data[1] >= 2.0);
+
+    destroy_Interval(output_interval);
+
+    wrong_node_length = 0;
+    output_interval = Interval_new(outputSize, 1);
+    for (int i = 0; i < inputSize; i++)
+    {
+        input[i] = 1;
+    }
+    initialize_input_interval(input_interval, inputSize, input, 0.00);
+    forward_prop_interval_equation_linear_conv(
+        nnet,
+        input_interval,
+        output_interval,
+        grad,
+        sym_interval,
+        wrong_nodes,
+        &wrong_node_length);
+    ck_assert_int_eq(wrong_node_length, 0);
+    ck_assert(output_interval->lower_matrix->data[0] <= 5.0);
+    ck_assert(output_interval->lower_matrix->data[1] <= 2.0);
+    ck_assert(output_interval->upper_matrix->data[0] >= 5.0);
+    ck_assert(output_interval->upper_matrix->data[1] >= 2.0);
+
+    destroy_SymInterval(sym_interval);
+    destroy_Interval(input_interval);
+    destroy_Interval(output_interval);
+    destroy_conv_network(nnet);
+}
+END_TEST
+
+START_TEST(test_forward_prop_interval_equation_linear_conv_example2)
+{
+    struct NNet *nnet = load_conv_network("artifacts/example2.nnet");
+    int inputSize = nnet->inputSize;
+    int outputSize = nnet->outputSize;
+    int maxLayerSize = nnet->maxLayerSize;
+
+    float input[inputSize];
+    load_inputs("artifacts/test_inputs/example2.center", inputSize, input);
+    struct Interval *input_interval = Interval_new(1, inputSize);
+    initialize_input_interval(input_interval, inputSize, input, 1);
+
+    struct Interval *output_interval = Interval_new(outputSize, 1);
+
+    int num_nodes = 30;
+    ERR_NODE = num_nodes;
+    struct SymInterval *sym_interval = SymInterval_new(inputSize, maxLayerSize, ERR_NODE);
+    int wrong_nodes[num_nodes];
+    int wrong_node_length = 0;
+
+    forward_prop_interval_equation_linear_conv(
+        nnet,
+        input_interval,
+        output_interval,
+        NULL,
+        sym_interval,
+        wrong_nodes,
+        &wrong_node_length);
+    ck_assert_int_eq(wrong_node_length, 30);
+    ck_assert(output_interval->lower_matrix->data[0] <= 0.0);
+    ck_assert(output_interval->upper_matrix->data[0] >= 2304.0);
+
+    destroy_Interval(output_interval);
+
+    float grad[wrong_node_length];
+    wrong_node_length = 0;
+    output_interval = Interval_new(outputSize, 1);
+    forward_prop_interval_equation_linear_conv(
+        nnet,
+        input_interval,
+        output_interval,
+        grad,
+        sym_interval,
+        wrong_nodes,
+        &wrong_node_length);
+    ck_assert_int_eq(wrong_node_length, 30);
+    ck_assert(output_interval->lower_matrix->data[0] <= 0.0);
+    ck_assert(output_interval->upper_matrix->data[0] >= 2304.0);
+
+    destroy_SymInterval(sym_interval);
+    destroy_Interval(input_interval);
+    destroy_Interval(output_interval);
+    destroy_conv_network(nnet);
+}
+END_TEST
+
 Suite *nnet_suite(void)
 {
     Suite *s = suite_create("nnet");
@@ -370,6 +753,8 @@ Suite *nnet_suite(void)
     TCase *tc_evaluate_conv = tcase_create("evaluate_conv");
     tcase_add_test(tc_evaluate_conv, test_evaluate_conv_example1);
     tcase_add_test(tc_evaluate_conv, test_evaluate_conv_example2);
+    tcase_add_test(tc_evaluate_conv, test_evaluate_conv_convolution);
+    tcase_add_test(tc_evaluate_conv, test_evaluate_vs_forward);
     suite_add_tcase(s, tc_evaluate_conv);
 
     TCase *tc_sort = tcase_create("sort");
@@ -387,6 +772,17 @@ Suite *nnet_suite(void)
     tcase_add_test(tc_outputs, test_initialize_output_constraint);
     tcase_add_exit_test(tc_outputs, test_initialize_output_constraint_not_exist, 1);
     suite_add_tcase(s, tc_outputs);
+
+    TCase *tc_input_constraints = tcase_create("input_constraints");
+    tcase_add_test(tc_input_constraints, test_set_input_constraints);
+    suite_add_tcase(s, tc_input_constraints);
+
+    TCase *tc_forward_prop_interval = tcase_create("forward_prop_interval");
+    tcase_add_test(tc_forward_prop_interval,
+                   test_forward_prop_interval_equation_linear_conv_example1);
+    tcase_add_test(tc_forward_prop_interval,
+                   test_forward_prop_interval_equation_linear_conv_example2);
+    suite_add_tcase(s, tc_forward_prop_interval);
 
     return s;
 }

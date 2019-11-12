@@ -1,6 +1,6 @@
 CC=gcc
 CFLAGS=-c -Wall
-PROFILE_FLAGS=-fprofile-arcs -ftest-coverage
+PROFILE_FLAGS=-fprofile-arcs -ftest-coverage -DDEBUG -g
 TST_LIBS=-lcheck -lm -lpthread -lrt -lsubunit 
 COV_LIBS=-lgcov -coverage
 SRC_DIR=../src
@@ -17,18 +17,21 @@ LDFLAGS= -L$(OPENBLAS_HOME)/lib -lopenblas -lpthread -lm
 LPFLAGS= $(LPSOLVE_HOME)/liblpsolve55.so -lm -ldl
 
 all: gcov_report.html
-	
-check_tests: $(SRC_DIR)/interval.o $(SRC_DIR)/matrix.o $(SRC_DIR)/nnet.o $(SRC_DIR)/split.o check_neurify.o
-	$(CC) $^ $(LDFLAGS) $(LPFLAGS) $(TST_LIBS) $(COV_LIBS) -o $@
+
+%.src.o: $(SRC_DIR)/%.c
+	$(CC) -o $@ $(CFLAGS) $(PROFILE_FLAGS) $<
+
+check_neurify.o: check_neurify.c check_nnet.c check_split.c
+	$(CC) -o $@ $(CFLAGS) $<
+
+check_tests: interval.src.o matrix.src.o nnet.src.o split.src.o check_neurify.o
+	$(CC) $^ $(LDFLAGS) $(LPFLAGS) $(TST_LIBS) $(COV_LIBS) $(PROFILE_FLAGS) -o $@
 
 test: check_tests
 	./check_tests
 
 gcov_report.html: test
 	$(GCOV) $(GCOV_FLAGS)
-
-%.o: %.c
-	$(CC) -o $@ $(CFLAGS) $(PROFILE_FLAGS) $<
 
 .PHONY: clean all
 
