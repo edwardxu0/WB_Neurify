@@ -676,96 +676,68 @@ int evaluate_conv(struct NNet *network, struct Matrix *input, struct Matrix *out
     return 1;
 }
 
-void backward_prop_conv(struct NNet *nnet, float *grad,
+void backward_prop_conv(struct NNet *nnet,
+                        float *grad,
                         int R[][nnet->maxLayerSize])
 {
     int numLayers = nnet->numLayers;
-    int inputSize = nnet->inputSize;
     int maxLayerSize = nnet->maxLayerSize;
 
-    float grad_upper[maxLayerSize];
     float grad_lower[maxLayerSize];
-    float grad1_upper[maxLayerSize];
-    float grad1_lower[maxLayerSize];
-    memcpy(grad_upper, nnet->matrix[numLayers - 1][0][nnet->target],
-           sizeof(float) * nnet->layerSizes[numLayers - 1]);
-    memcpy(grad_lower, nnet->matrix[numLayers - 1][0][nnet->target],
-           sizeof(float) * nnet->layerSizes[numLayers - 1]);
+    float grad_upper[maxLayerSize];
+    for (int i = 0; i < maxLayerSize; i++)
     {
-        int start_node = 0;
-        for (int l = 1; l < nnet->numLayers - 1; l++)
-        {
-            start_node += nnet->layerSizes[l];
-        }
-        for (int i = 0; i < nnet->layerSizes[nnet->numLayers - 1]; i++)
-        {
-            grad[start_node + i] = (grad_upper[i] > -grad_lower[i]) ? grad_upper[i] : -grad_lower[i];
-        }
+        grad_lower[i] = 1;
+        grad_upper[i] = 1;
+    }
+    float new_grad_upper[maxLayerSize];
+    float new_grad_lower[maxLayerSize];
+
+    int node_index = -1;
+    for (int layer = 1; layer < numLayers; layer++)
+    {
+        node_index += nnet->layerSizes[layer];
     }
 
-    for (int layer = numLayers - 2; layer > -1; layer--)
+    for (int layer = numLayers; layer > 0; layer--)
     {
-        float **weights = nnet->matrix[layer][0];
-        memset(grad1_upper, 0, sizeof(float) * maxLayerSize);
-        memset(grad1_lower, 0, sizeof(float) * maxLayerSize);
+        int layerType = nnet->layerTypes[layer];
+        int layerSize = nnet->layerSizes[layer];
+        int prevLayerType = nnet->layerTypes[layer - 1];
+        int prevLayerSize = nnet->layerSizes[layer - 1];
 
-        if (nnet->layerTypes[layer] != 1)
+        memset(new_grad_upper, 0, sizeof(float) * maxLayerSize);
+        memset(new_grad_lower, 0, sizeof(float) * maxLayerSize);
+
+        if (layerType == 0 && prevLayerType == 0 && layer > 1)
         {
-            if (layer != 0)
+            for (int i = layerSize - 1; i >= 0; i--)
             {
-                for (int j = 0; j < nnet->layerSizes[numLayers - 1]; j++)
+                if (layer < numLayers)
                 {
-                    if (R[layer][j] == 0)
+                    if (R[layer - 1][i] == 0)
                     {
-                        grad_upper[j] = grad_lower[j] = 0;
+                        grad_upper[i] = grad_lower[i] = 0;
                     }
-                    else if (R[layer][j] == 1)
+                    else if (R[layer - 1][i] == 1)
                     {
-                        grad_upper[j] = (grad_upper[j] > 0) ? grad_upper[j] : 0;
-                        grad_lower[j] = (grad_lower[j] < 0) ? grad_lower[j] : 0;
-                    }
-
-                    for (int i = 0; i < nnet->layerSizes[numLayers - 1]; i++)
-                    {
-                        if (weights[j][i] >= 0)
-                        {
-                            grad1_upper[i] += weights[j][i] * grad_upper[j];
-                            grad1_lower[i] += weights[j][i] * grad_lower[j];
-                        }
-                        else
-                        {
-                            grad1_upper[i] += weights[j][i] * grad_lower[j];
-                            grad1_lower[i] += weights[j][i] * grad_upper[j];
-                        }
+                        grad_upper[i] = (grad_upper[i] > 0) ? grad_upper[i] : 0;
+                        grad_lower[i] = (grad_lower[i] < 0) ? grad_lower[i] : 0;
                     }
                 }
-            }
-            else
-            {
-                for (int j = 0; j < nnet->layerSizes[numLayers - 1]; j++)
-                {
-                    if (R[layer][j] == 0)
-                    {
-                        grad_upper[j] = grad_lower[j] = 0;
-                    }
-                    else if (R[layer][j] == 1)
-                    {
-                        grad_upper[j] = (grad_upper[j] > 0) ? grad_upper[j] : 0;
-                        grad_lower[j] = (grad_lower[j] < 0) ? grad_lower[j] : 0;
-                    }
 
-                    for (int i = 0; i < inputSize; i++)
+                float **weights = nnet->matrix[layer - 1][0];
+                for (int j = prevLayerSize - 1; j >= 0; j--)
+                {
+                    if (weights[i][j] >= 0)
                     {
-                        if (weights[j][i] >= 0)
-                        {
-                            grad1_upper[i] += weights[j][i] * grad_upper[j];
-                            grad1_lower[i] += weights[j][i] * grad_lower[j];
-                        }
-                        else
-                        {
-                            grad1_upper[i] += weights[j][i] * grad_lower[j];
-                            grad1_lower[i] += weights[j][i] * grad_upper[j];
-                        }
+                        new_grad_upper[j] += weights[i][j] * grad_upper[i];
+                        new_grad_lower[j] += weights[i][j] * grad_lower[i];
+                    }
+                    else
+                    {
+                        new_grad_upper[j] += weights[i][j] * grad_lower[i];
+                        new_grad_lower[j] += weights[i][j] * grad_upper[i];
                     }
                 }
             }
@@ -775,23 +747,12 @@ void backward_prop_conv(struct NNet *nnet, float *grad,
             break;
         }
 
-        if (layer != 0 && nnet->layerTypes[layer - 1] != 1)
+        memcpy(grad_upper, new_grad_upper, sizeof(float) * maxLayerSize);
+        memcpy(grad_lower, new_grad_lower, sizeof(float) * maxLayerSize);
+        for (int i = prevLayerSize - 1; i >= 0; i--)
         {
-            memcpy(grad_upper, grad1_upper, sizeof(float) * nnet->layerSizes[numLayers - 1]);
-            memcpy(grad_lower, grad1_lower, sizeof(float) * nnet->layerSizes[numLayers - 1]);
-            int start_node = 0;
-            for (int l = 1; l < layer; l++)
-            {
-                start_node += nnet->layerSizes[l];
-            }
-            for (int i = 0; i < nnet->layerSizes[layer]; i++)
-            {
-                grad[start_node + i] = (grad_upper[i] > -grad_lower[i]) ? grad_upper[i] : -grad_lower[i];
-            }
-        }
-        else
-        {
-            break;
+            grad[node_index] = (grad_upper[i] > -grad_lower[i]) ? grad_upper[i] : -grad_lower[i];
+            node_index -= 1;
         }
     }
 }
@@ -1166,7 +1127,7 @@ int forward_prop_interval_equation_linear_conv(struct NNet *network,
                        &node_cnt);
 
         memcpy(equation, new_equation, sizeof(float) * (inputSize + 1) * maxLayerSize);
-        memcpy(equation_err, new_equation_err, sizeof(float) * (ERR_NODE)*maxLayerSize);
+        memcpy(equation_err, new_equation_err, sizeof(float) * ERR_NODE * maxLayerSize);
         sInterval->eq_matrix->row = sInterval->new_eq_matrix->row;
         sInterval->eq_matrix->col = sInterval->new_eq_matrix->col;
         sInterval->err_matrix->row = sInterval->new_err_matrix->row;

@@ -740,6 +740,42 @@ START_TEST(test_forward_prop_interval_equation_linear_conv_example2)
 }
 END_TEST
 
+START_TEST(test_backward_prop)
+{
+    struct NNet *nnet = load_conv_network("artifacts/example1.nnet");
+
+    float grad[4];
+    int R[nnet->numLayers][nnet->maxLayerSize];
+    for (int l = 0; l < nnet->numLayers; l++)
+    {
+        for (int i = 0; i < nnet->maxLayerSize; i++)
+        {
+            R[l][i] = 0;
+        }
+    }
+    backward_prop_conv(nnet, grad, R);
+    assert_float_close(grad[0], 0.0, 1e-6);
+    assert_float_close(grad[1], 0.0, 1e-6);
+    assert_float_close(grad[2], 1.0, 1e-6);
+    assert_float_close(grad[3], 2.0, 1e-6);
+
+    for (int l = 0; l < nnet->numLayers; l++)
+    {
+        for (int i = 0; i < nnet->maxLayerSize; i++)
+        {
+            R[l][i] = 1;
+        }
+    }
+    backward_prop_conv(nnet, grad, R);
+    assert_float_close(grad[0], 3.0, 1e-6);
+    assert_float_close(grad[1], 2.0, 1e-6);
+    assert_float_close(grad[2], 1.0, 1e-6);
+    assert_float_close(grad[3], 2.0, 1e-6);
+
+    destroy_conv_network(nnet);
+}
+END_TEST
+
 Suite *nnet_suite(void)
 {
     Suite *s = suite_create("nnet");
@@ -783,6 +819,10 @@ Suite *nnet_suite(void)
     tcase_add_test(tc_forward_prop_interval,
                    test_forward_prop_interval_equation_linear_conv_example2);
     suite_add_tcase(s, tc_forward_prop_interval);
+
+    TCase *tc_backward_prop = tcase_create("backward_prop");
+    tcase_add_test(tc_backward_prop, test_backward_prop);
+    suite_add_tcase(s, tc_backward_prop);
 
     return s;
 }
