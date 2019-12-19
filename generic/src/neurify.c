@@ -27,6 +27,7 @@ static struct argp_option options[] = {
     {"gamma_lb", 'l', "LB", 0, "The output lower bound for verification"},
     {"gamma_ub", 'u', "UB", 0, "The output upper bound for verification"},
     {"gamma_static", 's', 0, 0, "The output bounds for verification should not depend on the original output"},
+    {"max_thread", 't', "MAXTHREAD", 0, "The max number of threads to use"},
     {0, 0, 0, 0, "Logging options:"},
     {"verbose", 'v', 0, 0, "Produce verbose output"},
     {0}};
@@ -75,6 +76,9 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state)
         }
         arguments->property = 1;
         arguments->epsilon = (arg) ? atof(arg) : 1.0;
+        break;
+    case 't':
+        MAX_THREAD = atoi(arg);
         break;
     case 'v':
         NEED_PRINT = 1;
@@ -255,7 +259,7 @@ int main(int argc, char *argv[])
                   (float)(finish_time.tv_usec - start_time.tv_usec)) /
                  1000000;
 
-    if (isOverlap == 0 && adv_found == 0 && !can_t_prove)
+    if (isOverlap == 0 && adv_found == 0)
     {
         printf("Proved.\n");
     }

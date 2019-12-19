@@ -21,12 +21,10 @@
 
 #include "nnet.h"
 
+extern int MAX_THREAD;
 extern int NEED_PRINT;
 
 extern int adv_found;
-extern int can_t_prove;
-
-extern int MAX_DEPTH;
 
 #define PROGRESS_DEPTH 12
 extern int progress_list[PROGRESS_DEPTH];

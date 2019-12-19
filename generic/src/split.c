@@ -11,18 +11,11 @@
 
 #include "split.h"
 
-#define AVG_WINDOW 5
-#define MAX_THREAD -1
-#define MIN_DEPTH_PER_THREAD 5
-
+int MAX_THREAD = 0;
 int NEED_PRINT = 0;
 
 int adv_found = 0;
-int can_t_prove = 0;
-
 int count = 0;
-int MAX_DEPTH = 30;
-float avg_depth = 50;
 
 int progress_list[PROGRESS_DEPTH];
 int total_progress[PROGRESS_DEPTH];
@@ -382,12 +375,6 @@ int direct_run_check_conv_lp(struct NNet *nnet,
         pthread_mutex_unlock(&lock);
         return 0;
     }
-
-    if (can_t_prove)
-    {
-        pthread_mutex_unlock(&lock);
-        return 0;
-    }
     pthread_mutex_unlock(&lock);
 
     int isOverlap = forward_prop_interval_equation_conv_lp(nnet,
@@ -432,10 +419,6 @@ int direct_run_check_conv_lp(struct NNet *nnet,
         if (!adv_found)
             if (NEED_PRINT)
                 printf("depth:%d, sig:%d, UNSAT, great!\n\n", depth, sig);
-        pthread_mutex_lock(&lock);
-        avg_depth -= (avg_depth) / AVG_WINDOW;
-        avg_depth += depth / AVG_WINDOW;
-        pthread_mutex_unlock(&lock);
     }
     return isOverlap;
 }
@@ -475,17 +458,6 @@ int split_interval_conv_lp(struct NNet *nnet,
     }
 
     if (depth >= wrong_node_length)
-    {
-        pthread_mutex_unlock(&lock);
-        return 0;
-    }
-
-    if (depth >= MAX_DEPTH)
-    {
-        can_t_prove = 1;
-    }
-
-    if (can_t_prove)
     {
         pthread_mutex_unlock(&lock);
         return 0;
@@ -532,8 +504,7 @@ int split_interval_conv_lp(struct NNet *nnet,
     sigs1[target] = 1;
     sigs2[target] = 0;
     pthread_mutex_lock(&lock);
-    if ((depth <= avg_depth - MIN_DEPTH_PER_THREAD) &&
-        (count <= MAX_THREAD))
+    if (count + 2 <= MAX_THREAD)
     {
         pthread_mutex_unlock(&lock);
         pthread_t workers1, workers2;
