@@ -49,7 +49,7 @@ struct NNet *load_conv_network(const char *filename)
     }
 
     //Initialize variables
-    int bufferSize = 650000;
+    int bufferSize = 100000000;
     char *buffer = (char *)malloc(sizeof(char) * bufferSize);
     char *record, *line;
 
