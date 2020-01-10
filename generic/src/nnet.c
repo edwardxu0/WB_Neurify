@@ -507,7 +507,7 @@ void initialize_output_constraint(const char *path, struct Interval *output_inte
         printf("no output:%s!\n", path);
         exit(1);
     }
-    int bufferSize = 300000;
+    int bufferSize = 100000000;
     char *buffer = (char *)malloc(sizeof(char) * bufferSize);
     char *record, *line;
     line = fgets(buffer, bufferSize, fstream);
@@ -536,7 +536,7 @@ void load_inputs(const char *input_path, int inputSize, float *input)
         printf("no input:%s!\n", input_path);
         exit(1);
     }
-    int bufferSize = 300000;
+    int bufferSize = 100000000;
     char *buffer = (char *)malloc(sizeof(char) * bufferSize);
     char *record, *line;
     line = fgets(buffer, bufferSize, fstream);
