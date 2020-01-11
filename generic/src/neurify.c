@@ -13,6 +13,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include <sys/resource.h>
 
 #include "interval.h"
 #include "matrix.h"
@@ -27,6 +28,7 @@ static struct argp_option options[] = {
     {"gamma_lb", 'l', "LB", 0, "The output lower bound for verification"},
     {"gamma_ub", 'u', "UB", 0, "The output upper bound for verification"},
     {"gamma_static", 's', 0, 0, "The output bounds for verification should not depend on the original output"},
+    {"max_depth", 'd', "MAXDEPTH", 0, "The maximum depth to explore"},
     {"max_thread", 't', "MAXTHREAD", 0, "The max number of threads to use"},
     {0, 0, 0, 0, "Logging options:"},
     {"verbose", 'v', 0, 0, "Produce verbose output"},
@@ -77,6 +79,9 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state)
         arguments->property = 1;
         arguments->epsilon = (arg) ? atof(arg) : 1.0;
         break;
+    case 'd':
+        MAX_DEPTH = atoi(arg);
+        break;
     case 't':
         MAX_THREAD = atoi(arg);
         break;
@@ -117,6 +122,16 @@ int main(int argc, char *argv[])
     printf("output: %s\n", arguments.output);
     printf("property: %d\n", arguments.property);
     printf("epsilon: %f\n\n", arguments.epsilon);
+
+    struct rlimit l;
+    getrlimit(RLIMIT_STACK, &l);
+    long stack_size = fmin(l.rlim_cur, l.rlim_max);
+    if ((MAX_DEPTH * 32 * 1024.0) > stack_size)
+    {
+        printf("WARNING: exploring to max depth may overflow the stack.\n");
+        printf("         You may need to decrease the max depth or increase\n");
+        printf("         the max stack size. (~32kB per depth)\n");
+    }
 
     openblas_set_num_threads(1);
     gettimeofday(&start_time, NULL);
@@ -251,7 +266,7 @@ int main(int argc, char *argv[])
                   (float)(finish_time.tv_usec - start_time.tv_usec)) /
                  1000000;
 
-    if (isOverlap == 0 && adv_found == 0)
+    if (!max_depth_exceeded && !isOverlap && !adv_found)
     {
         printf("Proved.\n");
     }

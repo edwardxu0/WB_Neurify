@@ -11,10 +11,12 @@
 
 #include "split.h"
 
+int MAX_DEPTH = 250;
 int MAX_THREAD = 0;
 int NEED_PRINT = 0;
 
 int adv_found = 0;
+int max_depth_exceeded = 0;
 int count = 0;
 
 int progress_list[PROGRESS_DEPTH];
@@ -389,6 +391,12 @@ int direct_run_check_conv_lp(struct NNet *nnet,
         pthread_mutex_unlock(&lock);
         return 0;
     }
+
+    if (max_depth_exceeded)
+    {
+        pthread_mutex_unlock(&lock);
+        return 0;
+    }
     pthread_mutex_unlock(&lock);
 
     int isOverlap = forward_prop_interval_equation_conv_lp(nnet,
@@ -462,6 +470,17 @@ int split_interval_conv_lp(struct NNet *nnet,
 {
     pthread_mutex_lock(&lock);
     if (adv_found)
+    {
+        pthread_mutex_unlock(&lock);
+        return 0;
+    }
+
+    if (depth > MAX_DEPTH)
+    {
+        max_depth_exceeded = 1;
+    }
+
+    if (max_depth_exceeded)
     {
         pthread_mutex_unlock(&lock);
         return 0;
