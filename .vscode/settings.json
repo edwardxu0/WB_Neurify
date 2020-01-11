@@ -1,0 +1,15 @@
+{
+    "files.associations": {
+        "string.h": "c",
+        "array": "c",
+        "string_view": "c",
+        "initializer_list": "c",
+        "utility": "c",
+        "check_split.h": "c"
+    },
+    "python.formatting.provider": "black",
+    "python.pythonPath": "/bin/python3",
+    "python.linting.pylintEnabled": false,
+    "python.linting.mypyEnabled": true,
+    "python.linting.enabled": true
+}
