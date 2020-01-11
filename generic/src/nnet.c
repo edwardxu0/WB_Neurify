@@ -49,7 +49,7 @@ struct NNet *load_conv_network(const char *filename)
     }
 
     //Initialize variables
-    int bufferSize = 100000000;
+    int bufferSize = 1000000000;
     char *buffer = (char *)malloc(sizeof(char) * bufferSize);
     char *record, *line;
 
@@ -507,7 +507,7 @@ void initialize_output_constraint(const char *path, struct Interval *output_inte
         printf("no output:%s!\n", path);
         exit(1);
     }
-    int bufferSize = 100000000;
+    int bufferSize = 1000000000;
     char *buffer = (char *)malloc(sizeof(char) * bufferSize);
     char *record, *line;
     line = fgets(buffer, bufferSize, fstream);
@@ -536,14 +536,13 @@ void load_inputs(const char *input_path, int inputSize, float *input)
         printf("no input:%s!\n", input_path);
         exit(1);
     }
-    int bufferSize = 100000000;
+    int bufferSize = 1000000000;
     char *buffer = (char *)malloc(sizeof(char) * bufferSize);
     char *record, *line;
     line = fgets(buffer, bufferSize, fstream);
     record = strtok(line, ",\n");
     for (int i = 0; i < inputSize; i++)
     {
-
         input[i] = atof(record);
         record = strtok(NULL, ",\n");
     }
@@ -1074,7 +1073,6 @@ int forward_prop_interval_equation_linear_conv(struct NNet *network,
                                                struct Interval *input,
                                                struct Interval *output,
                                                float *grad,
-                                               struct SymInterval *sInterval,
                                                int *wrong_nodes,
                                                int *wrong_node_length)
 {
@@ -1088,6 +1086,7 @@ int forward_prop_interval_equation_linear_conv(struct NNet *network,
     int R[numLayers][maxLayerSize];
     memset(R, 0, sizeof(float) * numLayers * maxLayerSize);
 
+    struct SymInterval *sInterval = SymInterval_new(inputSize, maxLayerSize, ERR_NODE);
     float *equation = sInterval->eq_matrix->data;
     float *new_equation = sInterval->new_eq_matrix->data;
     float *equation_err = sInterval->err_matrix->data;
@@ -1138,5 +1137,6 @@ int forward_prop_interval_equation_linear_conv(struct NNet *network,
     if (grad != NULL)
         backward_prop_conv(nnet, grad, R);
 
+    destroy_SymInterval(sInterval);
     return 1;
 }

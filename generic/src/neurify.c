@@ -129,7 +129,6 @@ int main(int argc, char *argv[])
     int numLayers = nnet->numLayers;
     int inputSize = nnet->inputSize;
     int outputSize = nnet->outputSize;
-    int maxLayerSize = nnet->maxLayerSize;
 
     struct Matrix *input_matrix = Matrix_new(1, inputSize);
     struct Matrix *output_matrix = Matrix_new(outputSize, 1);
@@ -138,23 +137,22 @@ int main(int argc, char *argv[])
     struct Interval *output_constraint = Interval_new(outputSize, 1);
     nnet->output_constraint = output_constraint;
 
-    int wrong_node_length = 0;
+    int max_wrong_node_length = 0;
     for (int layer = 1; layer < numLayers; layer++)
     {
-        wrong_node_length += nnet->layerSizes[layer];
+        max_wrong_node_length += nnet->layerSizes[layer];
     }
 
-    int wrong_nodes[wrong_node_length];
-    memset(wrong_nodes, 0, sizeof(int) * wrong_node_length);
-    float grad[wrong_node_length];
-    memset(grad, 0, sizeof(float) * wrong_node_length);
-    int sigs[wrong_node_length];
-    for (int i = 0; i < wrong_node_length; i++)
+    int wrong_nodes[max_wrong_node_length];
+    memset(wrong_nodes, 0, sizeof(int) * max_wrong_node_length);
+    float grad[max_wrong_node_length];
+    memset(grad, 0, sizeof(float) * max_wrong_node_length);
+    int sigs[max_wrong_node_length];
+    for (int i = 0; i < max_wrong_node_length; i++)
     {
         sigs[i] = -1;
     }
-    ERR_NODE = wrong_node_length;
-    wrong_node_length = 0;
+    ERR_NODE = max_wrong_node_length;
 
     load_inputs(arguments.input, inputSize, input_matrix->data);
     initialize_input_interval(input_interval,
@@ -202,17 +200,14 @@ int main(int argc, char *argv[])
     int isOverlap = check1(nnet, output_matrix);
     if (!isOverlap)
     {
-        struct SymInterval *sym_interval = SymInterval_new(inputSize, maxLayerSize, ERR_NODE);
+        int wrong_node_length = 0;
         forward_prop_interval_equation_linear_conv(nnet,
                                                    input_interval,
                                                    output_interval,
                                                    grad,
-                                                   sym_interval,
                                                    wrong_nodes,
                                                    &wrong_node_length);
         ERR_NODE = wrong_node_length;
-        destroy_SymInterval(sym_interval);
-        sym_interval = SymInterval_new(inputSize, maxLayerSize, ERR_NODE);
 
         printf("One shot approximation:\n");
         printf("upper_matrix:");
@@ -220,16 +215,15 @@ int main(int argc, char *argv[])
         printf("lower matrix:");
         printMatrix(output_interval->lower_matrix);
 
-        sort(grad, wrong_node_length, wrong_nodes);
-        sort_layers(nnet->numLayers, nnet->layerSizes,
-                    wrong_node_length, wrong_nodes);
-
-        printf("total wrong nodes: %d\n", wrong_node_length);
-
         isOverlap = check(nnet, output_interval);
         if (isOverlap)
         {
             printf("Regular Mode (No CHECK_ADV_MODE)\n");
+            sort(grad, wrong_node_length, wrong_nodes);
+            sort_layers(nnet->numLayers, nnet->layerSizes,
+                        wrong_node_length, wrong_nodes);
+
+            printf("total wrong nodes: %d\n", wrong_node_length);
 
             lprec *lp = make_lp(0, inputSize);
             set_verbose(lp, IMPORTANT);
@@ -239,7 +233,6 @@ int main(int argc, char *argv[])
             int depth = 0;
             isOverlap = split_interval_conv_lp(nnet,
                                                input_interval,
-                                               sym_interval,
                                                wrong_nodes,
                                                wrong_node_length,
                                                sigs,
@@ -247,7 +240,6 @@ int main(int argc, char *argv[])
                                                depth);
             delete_lp(lp);
         }
-        destroy_SymInterval(sym_interval);
     }
     else
     {

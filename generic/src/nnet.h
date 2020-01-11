@@ -33,10 +33,6 @@ struct NNet
     float ****conv_matrix;
     float **conv_bias;
 
-    float min;        //Minimum value of inputs
-    float max;        //Maximum value of inputs
-    float mean;       //Array of the means used to scale the inputs and outputs
-    float range;      //Array of the ranges used to scale the inputs and outputs
     float ****matrix; //4D jagged array that stores the weights and biases
                       //the neural network.
     struct Matrix *weights;
@@ -70,7 +66,6 @@ int sym_relu_layer(struct SymInterval *sInterval, struct Interval *input, struct
                    int layer, int err_row,
                    int *wrong_nodes, int *wrong_node_length, int *node_cnt);
 
-//Functions Implemented
 struct NNet *load_conv_network(const char *filename);
 void destroy_conv_network(struct NNet *network);
 
@@ -102,7 +97,6 @@ int forward_prop_interval_equation_linear_conv(struct NNet *network,
                                                struct Interval *input,
                                                struct Interval *output,
                                                float *grad,
-                                               struct SymInterval *sInterval,
                                                int *wrong_nodes,
                                                int *wrong_node_length);
 

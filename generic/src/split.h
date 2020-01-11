@@ -37,7 +37,6 @@ struct direct_run_check_conv_lp_args
 {
 	struct NNet *nnet;
 	struct Interval *input;
-	struct SymInterval *sym_interval;
 	int *wrong_nodes;
 	int wrong_node_length;
 	int *sigs;
@@ -52,7 +51,6 @@ int check1(struct NNet *nnet, struct Matrix *output);
 
 int forward_prop_interval_equation_conv_lp(struct NNet *nnet,
 										   struct Interval *input,
-										   struct SymInterval *sInterval,
 										   int *sigs,
 										   int target,
 										   int sig,
@@ -60,7 +58,6 @@ int forward_prop_interval_equation_conv_lp(struct NNet *nnet,
 
 int direct_run_check_conv_lp(struct NNet *nnet,
 							 struct Interval *input,
-							 struct SymInterval *sInterval,
 							 int *wrong_nodes,
 							 int wrong_node_length,
 							 int *sigs,
@@ -71,7 +68,6 @@ int direct_run_check_conv_lp(struct NNet *nnet,
 
 int split_interval_conv_lp(struct NNet *nnet,
 						   struct Interval *input,
-						   struct SymInterval *sInterval,
 						   int *wrong_nodes,
 						   int wrong_node_length,
 						   int *sigs,

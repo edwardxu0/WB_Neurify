@@ -146,7 +146,6 @@ START_TEST(test_forward_prop_interval_equation_conv_lp_example1)
     struct NNet *nnet = load_conv_network("artifacts/example1.nnet");
     int inputSize = nnet->inputSize;
     int outputSize = nnet->outputSize;
-    int maxLayerSize = nnet->maxLayerSize;
 
     struct Interval *input_interval = Interval_new(1, inputSize);
     for (int i = 0; i < inputSize; i++)
@@ -168,7 +167,6 @@ START_TEST(test_forward_prop_interval_equation_conv_lp_example1)
         num_nodes += nnet->layerSizes[layer];
     }
     ERR_NODE = num_nodes;
-    struct SymInterval *sym_interval = SymInterval_new(inputSize, maxLayerSize, ERR_NODE);
 
     int sigs[num_nodes];
     memset(sigs, 0, sizeof(int) * num_nodes);
@@ -181,7 +179,6 @@ START_TEST(test_forward_prop_interval_equation_conv_lp_example1)
 
     int need_to_split = forward_prop_interval_equation_conv_lp(nnet,
                                                                input_interval,
-                                                               sym_interval,
                                                                sigs,
                                                                target,
                                                                sig,
@@ -191,7 +188,6 @@ START_TEST(test_forward_prop_interval_equation_conv_lp_example1)
     sig = 1;
     need_to_split = forward_prop_interval_equation_conv_lp(nnet,
                                                            input_interval,
-                                                           sym_interval,
                                                            sigs,
                                                            target,
                                                            sig,
@@ -202,7 +198,6 @@ START_TEST(test_forward_prop_interval_equation_conv_lp_example1)
     destroy_conv_network(nnet);
     destroy_Interval(input_interval);
     destroy_Interval(output_constraint);
-    destroy_SymInterval(sym_interval);
 }
 END_TEST
 
@@ -211,7 +206,6 @@ START_TEST(test_forward_prop_interval_equation_conv_lp_example2)
     struct NNet *nnet = load_conv_network("artifacts/example2.nnet");
     int inputSize = nnet->inputSize;
     int outputSize = nnet->outputSize;
-    int maxLayerSize = nnet->maxLayerSize;
 
     struct Interval *input_interval = Interval_new(1, inputSize);
     for (int i = 0; i < inputSize; i++)
@@ -233,7 +227,6 @@ START_TEST(test_forward_prop_interval_equation_conv_lp_example2)
         num_nodes += nnet->layerSizes[layer];
     }
     ERR_NODE = num_nodes;
-    struct SymInterval *sym_interval = SymInterval_new(inputSize, maxLayerSize, ERR_NODE);
 
     int sigs[num_nodes];
     memset(sigs, 0, sizeof(int) * num_nodes);
@@ -246,7 +239,6 @@ START_TEST(test_forward_prop_interval_equation_conv_lp_example2)
 
     int need_to_split = forward_prop_interval_equation_conv_lp(nnet,
                                                                input_interval,
-                                                               sym_interval,
                                                                sigs,
                                                                target,
                                                                sig,
@@ -256,7 +248,6 @@ START_TEST(test_forward_prop_interval_equation_conv_lp_example2)
     sig = 1;
     need_to_split = forward_prop_interval_equation_conv_lp(nnet,
                                                            input_interval,
-                                                           sym_interval,
                                                            sigs,
                                                            target,
                                                            sig,
@@ -267,7 +258,6 @@ START_TEST(test_forward_prop_interval_equation_conv_lp_example2)
     destroy_conv_network(nnet);
     destroy_Interval(input_interval);
     destroy_Interval(output_constraint);
-    destroy_SymInterval(sym_interval);
 }
 END_TEST
 

@@ -64,6 +64,8 @@ void check_adv1(struct NNet *nnet, struct Matrix *adv)
     {
         printf("adv found:\n");
         printMatrix(output);
+        printf("Solution:\n");
+        printMatrix(adv);
         pthread_mutex_lock(&lock);
         adv_found = 1;
         pthread_mutex_unlock(&lock);
@@ -201,7 +203,6 @@ int sym_relu_lp(struct SymInterval *sInterval,
 
 int forward_prop_interval_equation_conv_lp(struct NNet *nnet,
                                            struct Interval *input,
-                                           struct SymInterval *sInterval,
                                            int *sigs,
                                            int target,
                                            int sig,
@@ -214,6 +215,8 @@ int forward_prop_interval_equation_conv_lp(struct NNet *nnet,
     int inputSize = nnet->inputSize;
     int outputSize = nnet->outputSize;
     int maxLayerSize = nnet->maxLayerSize;
+
+    struct SymInterval *sInterval = SymInterval_new(inputSize, maxLayerSize, ERR_NODE);
 
     float *equation = sInterval->eq_matrix->data;
     float *new_equation = sInterval->new_eq_matrix->data;
@@ -294,56 +297,67 @@ int forward_prop_interval_equation_conv_lp(struct NNet *nnet,
                 float lower_bound = nnet->output_constraint->lower_matrix->data[i];
                 float upper_bound = nnet->output_constraint->upper_matrix->data[i];
 
-                new_equation[inputSize + i * (inputSize + 1)] += lower_err;
-                new_equation[inputSize + i * (inputSize + 1)] -= lower_bound;
-                isUnsat = set_output_constraints(lp,
-                                                 new_equation,
-                                                 i * (inputSize + 1),
-                                                 inputSize,
-                                                 0,
-                                                 &objective_value,
-                                                 input_matrix->data);
-                if (!isUnsat)
+                if (lower_bound > -INFINITY)
                 {
-                    need_to_split = 1;
-                    if (NEED_PRINT)
+                    new_equation[inputSize + i * (inputSize + 1)] += lower_err;
+                    new_equation[inputSize + i * (inputSize + 1)] -= lower_bound;
+                    isUnsat = set_output_constraints(lp,
+                                                     new_equation,
+                                                     i * (inputSize + 1),
+                                                     inputSize,
+                                                     0,
+                                                     &objective_value,
+                                                     input_matrix->data);
+                    if (!isUnsat)
                     {
-                        printf("target:%d, sig:%d, node:%d--Objective value: %f\n",
-                               target, sig, i, objective_value);
+                        need_to_split = 1;
+                        if (NEED_PRINT)
+                        {
+                            printf("target:%d, sig:%d, node:%d--Objective value: %f\n",
+                                   target, sig, i, objective_value);
+                        }
+                        check_adv1(nnet, input_matrix);
+                        if (adv_found)
+                        {
+                            destroy_Matrix(input_matrix);
+                            destroy_SymInterval(sInterval);
+                            return 0;
+                        }
                     }
-                    check_adv1(nnet, input_matrix);
-                    if (adv_found)
-                    {
-                        return 0;
-                    }
+                    new_equation[inputSize + i * (inputSize + 1)] -= lower_err;
+                    new_equation[inputSize + i * (inputSize + 1)] += upper_err;
                 }
-                new_equation[inputSize + i * (inputSize + 1)] -= lower_err;
-                new_equation[inputSize + i * (inputSize + 1)] += upper_err;
-                new_equation[inputSize + i * (inputSize + 1)] += lower_bound;
-                new_equation[inputSize + i * (inputSize + 1)] -= upper_bound;
-                isUnsat = set_output_constraints(lp,
-                                                 new_equation,
-                                                 i * (inputSize + 1),
-                                                 inputSize,
-                                                 1,
-                                                 &objective_value,
-                                                 input_matrix->data);
-                if (!isUnsat)
+                if (upper_bound < INFINITY)
                 {
-                    need_to_split = 1;
-                    if (NEED_PRINT)
+                    new_equation[inputSize + i * (inputSize + 1)] += lower_bound;
+                    new_equation[inputSize + i * (inputSize + 1)] -= upper_bound;
+                    isUnsat = set_output_constraints(lp,
+                                                     new_equation,
+                                                     i * (inputSize + 1),
+                                                     inputSize,
+                                                     1,
+                                                     &objective_value,
+                                                     input_matrix->data);
+                    if (!isUnsat)
                     {
-                        printf("target:%d, sig:%d, node:%d--Objective value: %f\n",
-                               target, sig, i, objective_value);
-                    }
-                    check_adv1(nnet, input_matrix);
-                    if (adv_found)
-                    {
-                        return 0;
+                        need_to_split = 1;
+                        if (NEED_PRINT)
+                        {
+                            printf("target:%d, sig:%d, node:%d--Objective value: %f\n",
+                                   target, sig, i, objective_value);
+                        }
+                        check_adv1(nnet, input_matrix);
+                        if (adv_found)
+                        {
+                            destroy_Matrix(input_matrix);
+                            destroy_SymInterval(sInterval);
+                            return 0;
+                        }
                     }
                 }
 
                 node_cnt++;
+                destroy_Matrix(input_matrix);
             }
         }
         memcpy(equation, new_equation, sizeof(float) * (inputSize + 1) * maxLayerSize);
@@ -355,12 +369,12 @@ int forward_prop_interval_equation_conv_lp(struct NNet *nnet,
         err_row = wrong_node_length;
     }
 
+    destroy_SymInterval(sInterval);
     return need_to_split;
 }
 
 int direct_run_check_conv_lp(struct NNet *nnet,
                              struct Interval *input,
-                             struct SymInterval *sInterval,
                              int *wrong_nodes,
                              int wrong_node_length,
                              int *sigs,
@@ -379,7 +393,6 @@ int direct_run_check_conv_lp(struct NNet *nnet,
 
     int isOverlap = forward_prop_interval_equation_conv_lp(nnet,
                                                            input,
-                                                           sInterval,
                                                            sigs,
                                                            target,
                                                            sig,
@@ -388,7 +401,6 @@ int direct_run_check_conv_lp(struct NNet *nnet,
     {
         pthread_mutex_lock(&lock);
         progress_list[depth - 1] += 1;
-        pthread_mutex_unlock(&lock);
         fprintf(stderr, " progress: ");
         for (int p = 1; p < PROGRESS_DEPTH + 1; p++)
         {
@@ -399,6 +411,7 @@ int direct_run_check_conv_lp(struct NNet *nnet,
             fprintf(stderr, " %d/%d ", progress_list[p - 1], total_progress[p - 1]);
         }
         fprintf(stderr, "\n");
+        pthread_mutex_unlock(&lock);
     }
 
     if (isOverlap)
@@ -407,7 +420,6 @@ int direct_run_check_conv_lp(struct NNet *nnet,
             printf("depth:%d, sig:%d Need to split!\n\n", depth, sig);
         isOverlap = split_interval_conv_lp(nnet,
                                            input,
-                                           sInterval,
                                            wrong_nodes,
                                            wrong_node_length,
                                            sigs,
@@ -430,7 +442,6 @@ void *direct_run_check_conv_lp_thread(void *args)
 {
     struct direct_run_check_conv_lp_args *actual_args = args;
     direct_run_check_conv_lp(actual_args->nnet, actual_args->input,
-                             actual_args->sym_interval,
                              actual_args->wrong_nodes,
                              actual_args->wrong_node_length,
                              actual_args->sigs,
@@ -443,7 +454,6 @@ void *direct_run_check_conv_lp_thread(void *args)
 
 int split_interval_conv_lp(struct NNet *nnet,
                            struct Interval *input,
-                           struct SymInterval *sInterval,
                            int *wrong_nodes,
                            int wrong_node_length,
                            int *sigs,
@@ -462,7 +472,6 @@ int split_interval_conv_lp(struct NNet *nnet,
         pthread_mutex_unlock(&lock);
         return 0;
     }
-    pthread_mutex_unlock(&lock);
 
     if (depth == 0)
     {
@@ -472,16 +481,12 @@ int split_interval_conv_lp(struct NNet *nnet,
             total_progress[p - 1] = pow(2, p);
         }
     }
-
-    int inputSize = nnet->inputSize;
-    int maxLayerSize = nnet->maxLayerSize;
+    pthread_mutex_unlock(&lock);
 
     int target = wrong_nodes[depth];
     depth++;
 
     int isOverlap1, isOverlap2;
-
-    struct SymInterval *sInterval1 = SymInterval_new(inputSize, maxLayerSize, ERR_NODE);
 
     lprec *lp1, *lp2;
     lp1 = copy_lp(lp);
@@ -511,7 +516,6 @@ int split_interval_conv_lp(struct NNet *nnet,
         struct direct_run_check_conv_lp_args args1 = {
             nnet,
             input,
-            sInterval,
             wrong_nodes,
             wrong_node_length,
             sigs1,
@@ -523,7 +527,6 @@ int split_interval_conv_lp(struct NNet *nnet,
         struct direct_run_check_conv_lp_args args2 = {
             nnet,
             input,
-            sInterval1,
             wrong_nodes,
             wrong_node_length,
             sigs2,
@@ -562,7 +565,6 @@ int split_interval_conv_lp(struct NNet *nnet,
         pthread_mutex_unlock(&lock);
         isOverlap1 = direct_run_check_conv_lp(nnet,
                                               input,
-                                              sInterval,
                                               wrong_nodes,
                                               wrong_node_length,
                                               sigs1,
@@ -573,7 +575,6 @@ int split_interval_conv_lp(struct NNet *nnet,
 
         isOverlap2 = direct_run_check_conv_lp(nnet,
                                               input,
-                                              sInterval1,
                                               wrong_nodes,
                                               wrong_node_length,
                                               sigs2,
@@ -583,7 +584,6 @@ int split_interval_conv_lp(struct NNet *nnet,
                                               depth);
     }
 
-    destroy_SymInterval(sInterval1);
     delete_lp(lp1);
     delete_lp(lp2);
 

@@ -235,7 +235,6 @@ START_TEST(test_evaluate_vs_forward)
     struct NNet *nnet = load_conv_network("artifacts/example2.nnet");
     int inputSize = nnet->inputSize;
     int outputSize = nnet->outputSize;
-    int maxLayerSize = nnet->maxLayerSize;
 
     struct Matrix *input = Matrix_new(1, inputSize);
     struct Matrix *output = Matrix_new(outputSize, 1);
@@ -248,7 +247,6 @@ START_TEST(test_evaluate_vs_forward)
         num_nodes += nnet->layerSizes[l];
     }
     ERR_NODE = num_nodes;
-    struct SymInterval *sym_interval = SymInterval_new(inputSize, maxLayerSize, ERR_NODE);
     struct Interval *input_interval = Interval_new(1, inputSize);
     int wrong_nodes[num_nodes];
 
@@ -265,7 +263,6 @@ START_TEST(test_evaluate_vs_forward)
             input_interval,
             output_interval,
             NULL,
-            sym_interval,
             wrong_nodes,
             &wrong_node_length);
         evaluate_conv(nnet, input, output);
@@ -276,7 +273,6 @@ START_TEST(test_evaluate_vs_forward)
         }
     }
 
-    destroy_SymInterval(sym_interval);
     destroy_Interval(input_interval);
     destroy_Interval(output_interval);
     destroy_conv_network(nnet);
@@ -537,7 +533,6 @@ START_TEST(test_forward_prop_interval_equation_linear_conv_example1)
     struct NNet *nnet = load_conv_network("artifacts/example1.nnet");
     int inputSize = nnet->inputSize;
     int outputSize = nnet->outputSize;
-    int maxLayerSize = nnet->maxLayerSize;
 
     float input[inputSize];
     load_inputs("artifacts/test_inputs/example1.center", inputSize, input);
@@ -548,7 +543,6 @@ START_TEST(test_forward_prop_interval_equation_linear_conv_example1)
 
     int num_nodes = 4;
     ERR_NODE = num_nodes;
-    struct SymInterval *sym_interval = SymInterval_new(inputSize, maxLayerSize, ERR_NODE);
     int wrong_nodes[num_nodes];
     int wrong_node_length = 0;
 
@@ -557,7 +551,6 @@ START_TEST(test_forward_prop_interval_equation_linear_conv_example1)
         input_interval,
         output_interval,
         NULL,
-        sym_interval,
         wrong_nodes,
         &wrong_node_length);
     ck_assert_int_eq(wrong_node_length, num_nodes);
@@ -576,7 +569,6 @@ START_TEST(test_forward_prop_interval_equation_linear_conv_example1)
         input_interval,
         output_interval,
         grad,
-        sym_interval,
         wrong_nodes,
         &wrong_node_length);
     ck_assert_int_eq(wrong_node_length, num_nodes);
@@ -599,7 +591,6 @@ START_TEST(test_forward_prop_interval_equation_linear_conv_example1)
         input_interval,
         output_interval,
         NULL,
-        sym_interval,
         wrong_nodes,
         &wrong_node_length);
     ck_assert_int_eq(wrong_node_length, 0);
@@ -622,7 +613,6 @@ START_TEST(test_forward_prop_interval_equation_linear_conv_example1)
         input_interval,
         output_interval,
         grad,
-        sym_interval,
         wrong_nodes,
         &wrong_node_length);
     ck_assert_int_eq(wrong_node_length, 0);
@@ -645,7 +635,6 @@ START_TEST(test_forward_prop_interval_equation_linear_conv_example1)
         input_interval,
         output_interval,
         NULL,
-        sym_interval,
         wrong_nodes,
         &wrong_node_length);
     ck_assert_int_eq(wrong_node_length, 0);
@@ -668,7 +657,6 @@ START_TEST(test_forward_prop_interval_equation_linear_conv_example1)
         input_interval,
         output_interval,
         grad,
-        sym_interval,
         wrong_nodes,
         &wrong_node_length);
     ck_assert_int_eq(wrong_node_length, 0);
@@ -677,7 +665,6 @@ START_TEST(test_forward_prop_interval_equation_linear_conv_example1)
     ck_assert(output_interval->upper_matrix->data[0] >= 5.0);
     ck_assert(output_interval->upper_matrix->data[1] >= 2.0);
 
-    destroy_SymInterval(sym_interval);
     destroy_Interval(input_interval);
     destroy_Interval(output_interval);
     destroy_conv_network(nnet);
@@ -689,7 +676,6 @@ START_TEST(test_forward_prop_interval_equation_linear_conv_example2)
     struct NNet *nnet = load_conv_network("artifacts/example2.nnet");
     int inputSize = nnet->inputSize;
     int outputSize = nnet->outputSize;
-    int maxLayerSize = nnet->maxLayerSize;
 
     float input[inputSize];
     load_inputs("artifacts/test_inputs/example2.center", inputSize, input);
@@ -700,7 +686,6 @@ START_TEST(test_forward_prop_interval_equation_linear_conv_example2)
 
     int num_nodes = 30;
     ERR_NODE = num_nodes;
-    struct SymInterval *sym_interval = SymInterval_new(inputSize, maxLayerSize, ERR_NODE);
     int wrong_nodes[num_nodes];
     int wrong_node_length = 0;
 
@@ -709,7 +694,6 @@ START_TEST(test_forward_prop_interval_equation_linear_conv_example2)
         input_interval,
         output_interval,
         NULL,
-        sym_interval,
         wrong_nodes,
         &wrong_node_length);
     ck_assert_int_eq(wrong_node_length, 30);
@@ -726,14 +710,12 @@ START_TEST(test_forward_prop_interval_equation_linear_conv_example2)
         input_interval,
         output_interval,
         grad,
-        sym_interval,
         wrong_nodes,
         &wrong_node_length);
     ck_assert_int_eq(wrong_node_length, 30);
     ck_assert(output_interval->lower_matrix->data[0] <= 0.0);
     ck_assert(output_interval->upper_matrix->data[0] >= 2304.0);
 
-    destroy_SymInterval(sym_interval);
     destroy_Interval(input_interval);
     destroy_Interval(output_interval);
     destroy_conv_network(nnet);
