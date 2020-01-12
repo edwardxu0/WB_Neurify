@@ -11,7 +11,7 @@
 
 #include "split.h"
 
-int MAX_DEPTH = 250;
+int MAX_DEPTH = -1;
 int MAX_THREAD = 0;
 int NEED_PRINT = 0;
 

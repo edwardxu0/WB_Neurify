@@ -148,21 +148,6 @@ int main(int argc, char *argv[])
         max_wrong_node_length += nnet->layerSizes[layer];
     }
 
-    struct rlimit l;
-    getrlimit(RLIMIT_STACK, &l);
-    long stack_size = fmin(l.rlim_cur, l.rlim_max);
-    printf("TEST: %lld\n", ((long long)MAX_DEPTH * max_wrong_node_length * 10));
-    long long max_stack_size = ((long long)MAX_DEPTH * max_wrong_node_length * 10);
-    if (max_stack_size > stack_size)
-    {
-        printf("WARNING: exploring to max depth may overflow the stack.\n");
-        printf("         The max stack size will be roughly (10 * max depth * number of neurons) bytes.\n");
-        printf("         The input network has %d neurons. The current stack limit is %.2f MB.\n",
-               max_wrong_node_length, stack_size / 1000000.0);
-        printf("         The estimated max stack size for depth %d is %.2f MB.\n", MAX_DEPTH, max_stack_size / 1000000.0);
-        printf("         The estimated max depth for the current stack limit is %ld.\n", stack_size / (max_wrong_node_length * 10));
-    }
-
     int wrong_nodes[max_wrong_node_length];
     memset(wrong_nodes, 0, sizeof(int) * max_wrong_node_length);
     float grad[max_wrong_node_length];
@@ -244,6 +229,25 @@ int main(int argc, char *argv[])
                         wrong_node_length, wrong_nodes);
 
             printf("total wrong nodes: %d\n", wrong_node_length);
+
+            struct rlimit l;
+            getrlimit(RLIMIT_STACK, &l);
+            long stack_limit = fmin(l.rlim_cur, l.rlim_max);
+            if (MAX_DEPTH < 0)
+            {
+                MAX_DEPTH = stack_limit / (wrong_node_length * 10);
+                fprintf(stderr, "WARNING: positive max depth not specified. Using estimated max depth for current stack limit.\n");
+                fprintf(stderr, "         The estimated max depth is %d for the current stack limit %.2f MB.\n", MAX_DEPTH, stack_limit / 1000000.0);
+            }
+            long long max_stack_size = ((long long)MAX_DEPTH * wrong_node_length * 10);
+            if (max_stack_size > stack_limit)
+            {
+                fprintf(stderr, "WARNING: exploring to max depth may overflow the stack.\n");
+                fprintf(stderr, "         The max stack size will be roughly (10 * max depth * number of splittable neurons) bytes.\n");
+                fprintf(stderr, "         The input network has %d splittable neurons. The current stack limit is %.2f MB.\n", wrong_node_length, stack_limit / 1000000.0);
+                fprintf(stderr, "         The estimated max stack size for depth %d is %.2f MB.\n", MAX_DEPTH, max_stack_size / 1000000.0);
+                fprintf(stderr, "         The estimated max depth for the current stack limit is %ld.\n", stack_limit / (wrong_node_length * 10));
+            }
 
             lprec *lp = make_lp(0, inputSize);
             set_verbose(lp, IMPORTANT);
