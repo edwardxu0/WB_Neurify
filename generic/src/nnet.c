@@ -22,6 +22,15 @@ struct SymInterval *SymInterval_new(int inputSize, int maxLayerSize, int maxErrN
     sym_interval->new_eq_matrix = Matrix_new((inputSize + 1), maxLayerSize);
     sym_interval->err_matrix = Matrix_new(maxErrNodes, maxLayerSize);
     sym_interval->new_err_matrix = Matrix_new(maxErrNodes, maxLayerSize);
+
+    sym_interval->eq_matrix->row = inputSize + 1;
+    sym_interval->eq_matrix->col = inputSize;
+    sym_interval->new_eq_matrix->row = inputSize + 1;
+    sym_interval->new_eq_matrix->col = inputSize;
+    sym_interval->err_matrix->row = ERR_NODE;
+    sym_interval->err_matrix->col = inputSize;
+    sym_interval->new_err_matrix->row = ERR_NODE;
+    sym_interval->new_err_matrix->col = inputSize;
     return sym_interval;
 }
 
@@ -1084,14 +1093,7 @@ int forward_prop_interval_equation_linear_conv(struct NNet *network,
     memset(R, 0, sizeof(float) * numLayers * maxLayerSize);
 
     struct SymInterval *sInterval = SymInterval_new(inputSize, maxLayerSize, ERR_NODE);
-    sInterval->eq_matrix->row = inputSize + 1;
-    sInterval->eq_matrix->col = inputSize;
-    sInterval->new_eq_matrix->row = inputSize + 1;
-    sInterval->new_eq_matrix->col = inputSize;
-    sInterval->err_matrix->row = ERR_NODE;
-    sInterval->err_matrix->col = inputSize;
-    sInterval->new_err_matrix->row = ERR_NODE;
-    sInterval->new_err_matrix->col = inputSize;
+
     float *equation = sInterval->eq_matrix->data;
     float *new_equation = sInterval->new_eq_matrix->data;
     float *equation_err = sInterval->err_matrix->data;

@@ -547,7 +547,6 @@ int split_interval_conv_lp(struct NNet *nnet,
 
         pthread_create(&workers1, NULL,
                        direct_run_check_conv_lp_thread, &args1);
-
         pthread_create(&workers2, NULL,
                        direct_run_check_conv_lp_thread, &args2);
 
