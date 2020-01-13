@@ -12,9 +12,8 @@ GCOV=gcovr
 GCOV_FLAGS=-r .. --html --html-details -o gcov_report.html
 
 OPENBLAS_HOME=/opt/OpenBLAS
-LPSOLVE_HOME=$(SRC_DIR)/lp_dev
 LDFLAGS=-L$(OPENBLAS_HOME)/lib -lopenblas -lpthread -lm
-LPFLAGS=$(LPSOLVE_HOME)/liblpsolve55.so -lm -ldl
+LPFLAGS=-llpsolve55 -lcolamd -ldl -lm 
 
 all: gcov_report.html
 
