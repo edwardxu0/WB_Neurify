@@ -391,12 +391,6 @@ int direct_run_check_conv_lp(struct NNet *nnet,
         pthread_mutex_unlock(&lock);
         return 0;
     }
-
-    if (max_depth_exceeded)
-    {
-        pthread_mutex_unlock(&lock);
-        return 0;
-    }
     pthread_mutex_unlock(&lock);
 
     int isOverlap = forward_prop_interval_equation_conv_lp(nnet,
@@ -475,19 +469,15 @@ int split_interval_conv_lp(struct NNet *nnet,
         return 0;
     }
 
-    if (depth > MAX_DEPTH)
-    {
-        max_depth_exceeded = 1;
-    }
-
-    if (max_depth_exceeded)
+    if (depth >= wrong_node_length)
     {
         pthread_mutex_unlock(&lock);
         return 0;
     }
 
-    if (depth >= wrong_node_length)
+    if (depth >= MAX_DEPTH)
     {
+        max_depth_exceeded = 1;
         pthread_mutex_unlock(&lock);
         return 0;
     }
@@ -530,6 +520,7 @@ int split_interval_conv_lp(struct NNet *nnet,
     pthread_mutex_lock(&lock);
     if (count + 2 <= MAX_THREAD)
     {
+        count += 2;
         pthread_mutex_unlock(&lock);
         pthread_t workers1, workers2;
         struct direct_run_check_conv_lp_args args1 = {
@@ -556,15 +547,9 @@ int split_interval_conv_lp(struct NNet *nnet,
 
         pthread_create(&workers1, NULL,
                        direct_run_check_conv_lp_thread, &args1);
-        pthread_mutex_lock(&lock);
-        count++;
-        pthread_mutex_unlock(&lock);
 
         pthread_create(&workers2, NULL,
                        direct_run_check_conv_lp_thread, &args2);
-        pthread_mutex_lock(&lock);
-        count++;
-        pthread_mutex_unlock(&lock);
 
         pthread_join(workers1, NULL);
         pthread_mutex_lock(&lock);
@@ -616,8 +601,7 @@ int split_interval_conv_lp(struct NNet *nnet,
         fprintf(stderr, " progress: ");
         for (int p = 1; p < PROGRESS_DEPTH + 1; p++)
         {
-            fprintf(stderr, " %d/%d ",
-                    progress_list[p - 1], total_progress[p - 1]);
+            fprintf(stderr, " %d/%d ", progress_list[p - 1], total_progress[p - 1]);
         }
         fprintf(stderr, "\n");
         pthread_mutex_unlock(&lock);

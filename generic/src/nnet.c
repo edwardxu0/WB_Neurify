@@ -445,7 +445,7 @@ float set_output_constraints(lprec *lp,
                              float *output,
                              float *input_prev)
 {
-    int unsat = 0;
+    int unsat = 1;
     REAL row[inputSize + 1];
     memset(row, 0, inputSize * sizeof(float));
     set_add_rowmode(lp, TRUE);
@@ -476,10 +476,7 @@ float set_output_constraints(lprec *lp,
         {
             input_prev[j] = (float)row[j];
         }
-    }
-    else
-    {
-        unsat = 1;
+        unsat = 0;
     }
 
     del_constraint(lp, get_Nrows(lp));
@@ -1087,6 +1084,14 @@ int forward_prop_interval_equation_linear_conv(struct NNet *network,
     memset(R, 0, sizeof(float) * numLayers * maxLayerSize);
 
     struct SymInterval *sInterval = SymInterval_new(inputSize, maxLayerSize, ERR_NODE);
+    sInterval->eq_matrix->row = inputSize + 1;
+    sInterval->eq_matrix->col = inputSize;
+    sInterval->new_eq_matrix->row = inputSize + 1;
+    sInterval->new_eq_matrix->col = inputSize;
+    sInterval->err_matrix->row = ERR_NODE;
+    sInterval->err_matrix->col = inputSize;
+    sInterval->new_err_matrix->row = ERR_NODE;
+    sInterval->new_err_matrix->col = inputSize;
     float *equation = sInterval->eq_matrix->data;
     float *new_equation = sInterval->new_eq_matrix->data;
     float *equation_err = sInterval->err_matrix->data;

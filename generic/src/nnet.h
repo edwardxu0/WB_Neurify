@@ -5,7 +5,8 @@
 #include <string.h>
 #include <time.h>
 
-#include "lp_dev/lp_lib.h"
+// #include "lp_dev/lp_lib.h"
+#include "lpsolve/lp_lib.h"
 #include "matrix.h"
 #include "interval.h"
 
