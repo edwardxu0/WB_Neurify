@@ -663,7 +663,7 @@ int evaluate_conv(struct NNet *network, struct Matrix *input, struct Matrix *out
             }
             for (int j = 0; j < maxLayerSize; j++)
             {
-                if (a[j] < 0)
+                if (a[j] < 0 && layer < (numLayers - 1))
                 {
                     a[j] = 0;
                 }
