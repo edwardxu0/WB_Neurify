@@ -24,6 +24,7 @@ static struct argp_option options[] = {
     {"network", 'n', "NETWORK", 0, "The network to verify"},
     {"input", 'x', "INPUT", 0, "The seed input for verification"},
     {"linf", 'i', "EPSILON", OPTION_ARG_OPTIONAL, "Verify robustness under the L-Inf distance metric"},
+    {"input_interval", 'I', "INPUTINTERVAL", 0, "Verify robustness under the L-Inf distance metric"},
     {"output", 'o', "OUTPUT", 0, "The output bounds for verification"},
     {"gamma_lb", 'l', "LB", 0, "The output lower bound for verification"},
     {"gamma_ub", 'u', "UB", 0, "The output upper bound for verification"},
@@ -38,7 +39,8 @@ struct arguments
 {
     char *network;
     char *input;
-    char *output;
+    char *input_interval;
+    char *output_interval;
     int property;
     float epsilon;
     float gamma_lb;
@@ -59,7 +61,7 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state)
         arguments->input = arg;
         break;
     case 'o':
-        arguments->output = arg;
+        arguments->output_interval = arg;
         break;
     case 'l':
         arguments->gamma_lb = atof(arg);
@@ -78,6 +80,15 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state)
         }
         arguments->property = 1;
         arguments->epsilon = (arg) ? atof(arg) : 1.0;
+        break;
+    case 'I':
+        if (arguments->property)
+        {
+            printf("More than 1 input constraint is not supported.\n");
+            argp_usage(state);
+        }
+        arguments->property = 1;
+        arguments->input_interval = arg;
         break;
     case 'd':
         MAX_DEPTH = atoi(arg);
@@ -109,7 +120,8 @@ int main(int argc, char *argv[])
     struct arguments arguments;
     arguments.network = NULL;
     arguments.input = NULL;
-    arguments.output = NULL;
+    arguments.output_interval = NULL;
+    arguments.input_interval = NULL;
     arguments.property = 0;
     arguments.epsilon = 0;
     arguments.gamma_lb = -INFINITY;
@@ -119,7 +131,8 @@ int main(int argc, char *argv[])
 
     printf("network: %s\n", arguments.network);
     printf("input: %s\n", arguments.input);
-    printf("output: %s\n", arguments.output);
+    printf("input interval: %s\n", arguments.input_interval);
+    printf("output interval: %s\n", arguments.output_interval);
     printf("property: %d\n", arguments.property);
     printf("epsilon: %f\n\n", arguments.epsilon);
 
@@ -160,10 +173,17 @@ int main(int argc, char *argv[])
     ERR_NODE = max_wrong_node_length;
 
     load_inputs(arguments.input, inputSize, input_matrix->data);
-    initialize_input_interval(input_interval,
-                              inputSize,
-                              input_matrix->data,
-                              arguments.epsilon);
+    if (arguments.input_interval != NULL)
+    {
+        initialize_interval_constraint(arguments.input_interval, input_interval, inputSize);
+    }
+    else
+    {
+        initialize_input_interval(input_interval,
+                                  inputSize,
+                                  input_matrix->data,
+                                  arguments.epsilon);
+    }
 
     evaluate_conv(nnet, input_matrix, output_matrix);
     if (inputSize < 10)
@@ -176,9 +196,9 @@ int main(int argc, char *argv[])
     if (arguments.property == 0)
         return 0;
 
-    if (arguments.output != NULL)
+    if (arguments.output_interval != NULL)
     {
-        initialize_output_constraint(arguments.output, output_constraint, outputSize);
+        initialize_interval_constraint(arguments.output_interval, output_constraint, outputSize);
     }
     else
     {

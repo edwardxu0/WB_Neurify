@@ -505,7 +505,7 @@ void initialize_input_interval(struct Interval *input_interval,
     }
 }
 
-void initialize_output_constraint(const char *path, struct Interval *output_interval, int outputSize)
+void initialize_interval_constraint(const char *path, struct Interval *interval, int outputSize)
 {
     FILE *fstream = fopen(path, "r");
     if (fstream == NULL)
@@ -520,14 +520,14 @@ void initialize_output_constraint(const char *path, struct Interval *output_inte
     record = strtok(line, ",\n");
     for (int i = 0; i < outputSize; i++)
     {
-        output_interval->lower_matrix->data[i] = atof(record);
+        interval->lower_matrix->data[i] = atof(record);
         record = strtok(NULL, ",\n");
     }
     line = fgets(buffer, bufferSize, fstream);
     record = strtok(line, ",\n");
     for (int i = 0; i < outputSize; i++)
     {
-        output_interval->upper_matrix->data[i] = atof(record);
+        interval->upper_matrix->data[i] = atof(record);
         record = strtok(NULL, ",\n");
     }
     free(buffer);

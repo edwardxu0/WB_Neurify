@@ -456,13 +456,13 @@ START_TEST(test_initialize_input_interval)
 }
 END_TEST
 
-START_TEST(test_initialize_output_constraint)
+START_TEST(test_initialize_interval_constraint)
 {
     int outputSize = 2;
     struct Interval *output_interval = Interval_new(outputSize, 1);
-    initialize_output_constraint("artifacts/test_outputs/example1.out",
-                                 output_interval,
-                                 outputSize);
+    initialize_interval_constraint("artifacts/test_outputs/example1.out",
+                                   output_interval,
+                                   outputSize);
     assert_float_close(output_interval->lower_matrix->data[0],
                        -0.3, 1e-6);
     assert_float_close(output_interval->lower_matrix->data[1],
@@ -475,10 +475,10 @@ START_TEST(test_initialize_output_constraint)
 }
 END_TEST
 
-START_TEST(test_initialize_output_constraint_not_exist)
+START_TEST(test_initialize_interval_constraint_not_exist)
 {
     int outputSize = 2;
-    initialize_output_constraint("<INVALID>", NULL, outputSize);
+    initialize_interval_constraint("<INVALID>", NULL, outputSize);
 }
 END_TEST
 
@@ -787,8 +787,8 @@ Suite *nnet_suite(void)
     suite_add_tcase(s, tc_inputs);
 
     TCase *tc_outputs = tcase_create("outputs");
-    tcase_add_test(tc_outputs, test_initialize_output_constraint);
-    tcase_add_exit_test(tc_outputs, test_initialize_output_constraint_not_exist, 1);
+    tcase_add_test(tc_outputs, test_initialize_interval_constraint);
+    tcase_add_exit_test(tc_outputs, test_initialize_interval_constraint_not_exist, 1);
     suite_add_tcase(s, tc_outputs);
 
     TCase *tc_input_constraints = tcase_create("input_constraints");

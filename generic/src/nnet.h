@@ -76,9 +76,9 @@ void initialize_input_interval(struct Interval *input_interval,
                                int inputSize,
                                float input[inputSize],
                                float epsilon);
-void initialize_output_constraint(const char *path,
-                                  struct Interval *output_interval,
-                                  int outputSize);
+void initialize_interval_constraint(const char *path,
+                                    struct Interval *output_interval,
+                                    int outputSize);
 
 void sort(float *array, int num, int *ind);
 
