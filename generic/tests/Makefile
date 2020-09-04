@@ -14,14 +14,15 @@ GCOV_FLAGS=-r .. --html --html-details -o gcov_report.html
 OPENBLAS_HOME=/opt/OpenBLAS
 LDFLAGS=-L$(OPENBLAS_HOME)/lib -lopenblas -lpthread -lm
 LPFLAGS=-llpsolve55 -lcolamd -ldl -lm 
+INCLUDE_FLAGS=-I$(OPENBLAS_HOME)/include/
 
 all: gcov_report.html
 
 %.src.o: $(SRC_DIR)/%.c
-	$(CC) -o $@ $(CFLAGS) $(PROFILE_FLAGS) $<
+	$(CC) -o $@ $(INCLUDE_FLAGS) $(CFLAGS) $(PROFILE_FLAGS) $<
 
 check_neurify.o: check_neurify.c check_nnet.c check_split.c
-	$(CC) -o $@ $(CFLAGS) $<
+	$(CC) -o $@ $(INCLUDE_FLAGS) $(CFLAGS) $<
 
 check_tests: interval.src.o matrix.src.o nnet.src.o split.src.o check_neurify.o
 	$(CC) $^ $(LDFLAGS) $(LPFLAGS) $(TST_LIBS) $(COV_LIBS) $(PROFILE_FLAGS) -o $@
