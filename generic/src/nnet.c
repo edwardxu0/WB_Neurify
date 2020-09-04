@@ -429,7 +429,7 @@ void set_node_constraints(lprec *lp,
                           int inputSize)
 {
     REAL row[inputSize + 1];
-    memset(row, 0, inputSize * sizeof(float));
+    memset(row, 0, inputSize * sizeof(REAL));
     set_add_rowmode(lp, TRUE);
     for (int j = 1; j < inputSize + 1; j++)
     {
@@ -456,7 +456,7 @@ float set_output_constraints(lprec *lp,
 {
     int unsat = 1;
     REAL row[inputSize + 1];
-    memset(row, 0, inputSize * sizeof(float));
+    memset(row, 0, (inputSize + 1) * sizeof(REAL));
     set_add_rowmode(lp, TRUE);
     for (int j = 1; j < inputSize + 1; j++)
     {
@@ -474,7 +474,8 @@ float set_output_constraints(lprec *lp,
     }
     set_add_rowmode(lp, FALSE);
 
-    set_obj_fnex(lp, inputSize + 1, row, NULL);
+    // set_obj_fnex(lp, inputSize + 1, row, NULL);
+    set_obj_fn(lp, row);
 
     int ret = solve(lp);
     if (ret == OPTIMAL)
@@ -505,7 +506,7 @@ void initialize_input_interval(struct Interval *input_interval,
     }
 }
 
-void initialize_interval_constraint(const char *path, struct Interval *interval, int outputSize)
+void initialize_interval_constraint(const char *path, struct Interval *interval, int intervalSize)
 {
     FILE *fstream = fopen(path, "r");
     if (fstream == NULL)
@@ -518,14 +519,14 @@ void initialize_interval_constraint(const char *path, struct Interval *interval,
     char *record, *line;
     line = fgets(buffer, bufferSize, fstream);
     record = strtok(line, ",\n");
-    for (int i = 0; i < outputSize; i++)
+    for (int i = 0; i < intervalSize; i++)
     {
         interval->lower_matrix->data[i] = atof(record);
         record = strtok(NULL, ",\n");
     }
     line = fgets(buffer, bufferSize, fstream);
     record = strtok(line, ",\n");
-    for (int i = 0; i < outputSize; i++)
+    for (int i = 0; i < intervalSize; i++)
     {
         interval->upper_matrix->data[i] = atof(record);
         record = strtok(NULL, ",\n");
@@ -704,9 +705,8 @@ void backward_prop_conv(struct NNet *nnet,
         node_index += nnet->layerSizes[layer];
     }
 
-    for (int layer = numLayers; layer > 0; layer--)
+    for (int layer = numLayers; layer > 1; layer--)
     {
-        int layerType = nnet->layerTypes[layer];
         int layerSize = nnet->layerSizes[layer];
         int prevLayerType = nnet->layerTypes[layer - 1];
         int prevLayerSize = nnet->layerSizes[layer - 1];
@@ -714,7 +714,7 @@ void backward_prop_conv(struct NNet *nnet,
         memset(new_grad_upper, 0, sizeof(float) * maxLayerSize);
         memset(new_grad_lower, 0, sizeof(float) * maxLayerSize);
 
-        if (layerType == 0 && prevLayerType == 0 && layer > 1)
+        if (prevLayerType == 0)
         {
             for (int i = layerSize - 1; i >= 0; i--)
             {
@@ -1090,7 +1090,7 @@ int forward_prop_interval_equation_linear_conv(struct NNet *network,
     int maxLayerSize = nnet->maxLayerSize;
 
     int R[numLayers][maxLayerSize];
-    memset(R, 0, sizeof(float) * numLayers * maxLayerSize);
+    memset(R, 0, sizeof(int) * numLayers * maxLayerSize);
 
     struct SymInterval *sInterval = SymInterval_new(inputSize, maxLayerSize, ERR_NODE);
 
