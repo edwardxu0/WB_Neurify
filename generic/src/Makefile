@@ -10,8 +10,8 @@ all: CFLAGS += -O3
 all: LDFLAGS += -O3
 
 debug: neurify
-debug: CFLAGS += -DDEBUG -g
-debug: LDFLAGS += -DDEBUG -g
+debug: CFLAGS += -DDEBUG -g -O0
+debug: LDFLAGS += -DDEBUG -g -O0
 
 neurify: matrix.o interval.o nnet.o split.o neurify.c
 	$(CC) -o $@ $^ $(LDFLAGS) $(LPFLAGS) $(INCLUDE_FLAGS)
