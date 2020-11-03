@@ -15,6 +15,7 @@
 #include <stdlib.h>
 #include <sys/resource.h>
 
+#include "hpoly.h"
 #include "interval.h"
 #include "matrix.h"
 #include "nnet.h"
@@ -23,8 +24,9 @@
 static struct argp_option options[] = {
     {"network", 'n', "NETWORK", 0, "The network to verify"},
     {"input", 'x', "INPUT", 0, "The seed input for verification"},
-    {"linf", 'i', "EPSILON", OPTION_ARG_OPTIONAL, "Verify robustness under the L-Inf distance metric"},
-    {"input_interval", 'I', "INPUTINTERVAL", 0, "Verify robustness under the L-Inf distance metric"},
+    {"linf", 'i', "EPSILON", OPTION_ARG_OPTIONAL, "Verify reachability under the L-Inf distance metric"},
+    {"input_interval", 'I', "INPUTINTERVAL", 0, "Verify reachability for the given interval"},
+    {"input_hpoly", 'H', "INPUTHPOLY", 0, "Verify reachability for the given h-polytope"},
     {"output", 'o', "OUTPUT", 0, "The output bounds for verification"},
     {"gamma_lb", 'l', "LB", 0, "The output lower bound for verification"},
     {"gamma_ub", 'u', "UB", 0, "The output upper bound for verification"},
@@ -40,6 +42,7 @@ struct arguments
     char *network;
     char *input;
     char *input_interval;
+    char *input_hpoly;
     char *output_interval;
     int property;
     float epsilon;
@@ -75,20 +78,29 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state)
     case 'i':
         if (arguments->property)
         {
-            printf("More than 1 input constraint is not supported.\n");
+            printf("Cannot specify both an input region and an L-Inf distance.\n");
             argp_usage(state);
         }
         arguments->property = 1;
         arguments->epsilon = (arg) ? atof(arg) : 1.0;
         break;
     case 'I':
-        if (arguments->property)
+        if (arguments->property == 1)
         {
-            printf("More than 1 input constraint is not supported.\n");
+            printf("Cannot specify both an interval and an L-Inf distance.\n");
             argp_usage(state);
         }
-        arguments->property = 1;
+        arguments->property = 2;
         arguments->input_interval = arg;
+        break;
+    case 'H':
+        if (arguments->property == 1)
+        {
+            printf("Cannot specify both an h-polytope and an L-Inf distance\n");
+            argp_usage(state);
+        }
+        arguments->property = 3;
+        arguments->input_hpoly = arg;
         break;
     case 'd':
         MAX_DEPTH = atoi(arg);
@@ -122,6 +134,7 @@ int main(int argc, char *argv[])
     arguments.input = NULL;
     arguments.output_interval = NULL;
     arguments.input_interval = NULL;
+    arguments.input_hpoly = NULL;
     arguments.property = 0;
     arguments.epsilon = 0;
     arguments.gamma_lb = -INFINITY;
@@ -132,6 +145,7 @@ int main(int argc, char *argv[])
     printf("network: %s\n", arguments.network);
     printf("input: %s\n", arguments.input);
     printf("input interval: %s\n", arguments.input_interval);
+    printf("input hpoly: %s\n", arguments.input_hpoly);
     printf("output interval: %s\n", arguments.output_interval);
     printf("property: %d\n", arguments.property);
     printf("epsilon: %f\n\n", arguments.epsilon);
@@ -151,6 +165,7 @@ int main(int argc, char *argv[])
     struct Matrix *input_matrix = Matrix_new(1, inputSize);
     struct Matrix *output_matrix = Matrix_new(outputSize, 1);
     struct Interval *input_interval = Interval_new(1, inputSize);
+    struct HPoly *input_hpoly = HPoly_new(inputSize, 0);
     struct Interval *output_interval = Interval_new(outputSize, 1);
     struct Interval *output_constraint = Interval_new(outputSize, 1);
     nnet->output_constraint = output_constraint;
@@ -177,7 +192,11 @@ int main(int argc, char *argv[])
     {
         initialize_interval_constraint(arguments.input_interval, input_interval, inputSize);
     }
-    else
+    if (arguments.input_hpoly != NULL)
+    {
+        initialize_hpoly_constraint(arguments.input_hpoly, input_hpoly);
+    }
+    if (arguments.input_interval == NULL && arguments.input_hpoly == NULL)
     {
         initialize_input_interval(input_interval,
                                   inputSize,
@@ -272,6 +291,8 @@ int main(int argc, char *argv[])
             lprec *lp = make_lp(0, inputSize);
             set_verbose(lp, IMPORTANT);
             set_input_constraints(input_interval, lp, inputSize);
+            if (arguments.input_hpoly != NULL)
+                set_hpoly_input_constraints(input_hpoly, lp, inputSize);
             set_presolve(lp, PRESOLVE_LINDEP, get_presolveloops(lp));
 
             int depth = 0;

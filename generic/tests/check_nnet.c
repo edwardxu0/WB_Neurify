@@ -482,6 +482,65 @@ START_TEST(test_initialize_interval_constraint_not_exist)
 }
 END_TEST
 
+START_TEST(test_initialize_hpoly_constraint)
+{
+    int inputSize = 2;
+    struct HPoly *hpoly = HPoly_new(inputSize, 0);
+    initialize_hpoly_constraint("artifacts/test_inputs/example.hpoly", hpoly);
+
+    assert_float_close(hpoly->A->data[0], 1.0, 1e-6);
+    assert_float_close(hpoly->A->data[1], 0.0, 1e-6);
+    assert_float_close(hpoly->A->data[2], 0.0, 1e-6);
+    assert_float_close(hpoly->A->data[3], 1.0, 1e-6);
+    assert_float_close(hpoly->A->data[4], -1.0, 1e-6);
+    assert_float_close(hpoly->A->data[5], 0.0, 1e-6);
+    assert_float_close(hpoly->A->data[6], 0.0, 1e-6);
+    assert_float_close(hpoly->A->data[7], -1.0, 1e-6);
+
+    assert_float_close(hpoly->b->data[0], 1.0, 1e-6);
+    assert_float_close(hpoly->b->data[1], 1.0, 1e-6);
+    assert_float_close(hpoly->b->data[2], 0.0, 1e-6);
+    assert_float_close(hpoly->b->data[3], 0.0, 1e-6);
+
+    ck_assert_int_eq(hpoly->num_vars, 2);
+    ck_assert_int_eq(hpoly->num_constraints, 4);
+
+    destroy_HPoly(hpoly);
+}
+END_TEST
+
+START_TEST(test_initialize_hpoly_constraint_not_exist)
+{
+    initialize_hpoly_constraint("<INVALID>", NULL);
+}
+END_TEST
+
+START_TEST(test_set_hpoly_input_constraints)
+{
+    {
+        int inputSize = 2;
+        struct HPoly *hpoly = HPoly_new(inputSize, 0);
+        initialize_hpoly_constraint("artifacts/test_inputs/example.hpoly", hpoly);
+
+        lprec *lp = make_lp(0, inputSize);
+        set_verbose(lp, CRITICAL);
+        set_hpoly_input_constraints(hpoly, lp, inputSize);
+        ck_assert_int_eq(solve(lp), 0);
+
+        REAL row[inputSize + 1];
+        get_variables(lp, row);
+        for (int j = 0; j < inputSize; j++)
+        {
+            ck_assert(row[j] >= 0);
+            ck_assert(row[j] <= 1);
+        }
+
+        destroy_HPoly(hpoly);
+        delete_lp(lp);
+    }
+}
+END_TEST
+
 START_TEST(test_set_input_constraints)
 {
     {
@@ -790,6 +849,12 @@ Suite *nnet_suite(void)
     tcase_add_test(tc_outputs, test_initialize_interval_constraint);
     tcase_add_exit_test(tc_outputs, test_initialize_interval_constraint_not_exist, 1);
     suite_add_tcase(s, tc_outputs);
+
+    TCase *tc_hpoly = tcase_create("hpoly");
+    tcase_add_test(tc_hpoly, test_initialize_hpoly_constraint);
+    tcase_add_exit_test(tc_hpoly, test_initialize_hpoly_constraint_not_exist, 1);
+    tcase_add_test(tc_hpoly, test_set_hpoly_input_constraints);
+    suite_add_tcase(s, tc_hpoly);
 
     TCase *tc_input_constraints = tcase_create("input_constraints");
     tcase_add_test(tc_input_constraints, test_set_input_constraints);

@@ -9,6 +9,7 @@
 #include "lpsolve/lp_lib.h"
 #include "matrix.h"
 #include "interval.h"
+#include "hpoly.h"
 
 extern long long ERR_NODE;
 extern struct timeval start_time, finish_time;
@@ -79,12 +80,15 @@ void initialize_input_interval(struct Interval *input_interval,
 void initialize_interval_constraint(const char *path,
                                     struct Interval *output_interval,
                                     int outputSize);
+void initialize_hpoly_constraint(const char *path, struct HPoly *hpoly);
 
 void sort(float *array, int num, int *ind);
 
 void sort_layers(int numLayers, int *layerSizes, int wrong_node_length, int *wrong_nodes);
 
 void set_input_constraints(struct Interval *input, lprec *lp, int inputSize);
+
+void set_hpoly_input_constraints(struct HPoly *hpoly, lprec *lp, int inputSize);
 
 void set_node_constraints(lprec *lp, float *equation, int start, int sig, int inputSize);
 

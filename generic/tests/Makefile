@@ -24,7 +24,7 @@ all: gcov_report.html
 check_neurify.o: check_neurify.c check_nnet.c check_split.c
 	$(CC) -o $@ $(INCLUDE_FLAGS) $(CFLAGS) $<
 
-check_tests: interval.src.o matrix.src.o nnet.src.o split.src.o check_neurify.o
+check_tests: interval.src.o hpoly.src.o matrix.src.o nnet.src.o split.src.o check_neurify.o
 	$(CC) $^ $(LDFLAGS) $(LPFLAGS) $(TST_LIBS) $(COV_LIBS) $(PROFILE_FLAGS) -o $@
 
 test: check_tests

@@ -13,7 +13,7 @@ debug: neurify
 debug: CFLAGS += -DDEBUG -g -O0
 debug: LDFLAGS += -DDEBUG -g -O0
 
-neurify: matrix.o interval.o nnet.o split.o neurify.c
+neurify: matrix.o interval.o hpoly.o nnet.o split.o neurify.c
 	$(CC) -o $@ $^ $(LDFLAGS) $(LPFLAGS) $(INCLUDE_FLAGS)
 
 %.o: %.c

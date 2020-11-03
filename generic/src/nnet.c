@@ -422,6 +422,24 @@ void set_input_constraints(struct Interval *input,
     }
 }
 
+void set_hpoly_input_constraints(struct HPoly *hpoly,
+                                 lprec *lp,
+                                 int inputSize)
+{
+    REAL row[inputSize + 1];
+    memset(row, 0, inputSize * sizeof(REAL));
+    set_add_rowmode(lp, TRUE);
+    for (int i = 0; i < hpoly->num_constraints; i++)
+    {
+        for (int j = 0; j < hpoly->num_vars; j++)
+        {
+            row[j + 1] = hpoly->A->data[i * hpoly->num_vars + j];
+        }
+        add_constraint(lp, row, LE, hpoly->b->data[i]);
+    }
+    set_add_rowmode(lp, FALSE);
+}
+
 void set_node_constraints(lprec *lp,
                           float *equation,
                           int start,
@@ -531,6 +549,49 @@ void initialize_interval_constraint(const char *path, struct Interval *interval,
         interval->upper_matrix->data[i] = atof(record);
         record = strtok(NULL, ",\n");
     }
+    free(buffer);
+    fclose(fstream);
+}
+
+void initialize_hpoly_constraint(const char *path, struct HPoly *hpoly)
+{
+    FILE *fstream = fopen(path, "r");
+    if (fstream == NULL)
+    {
+        printf("no file:%s!\n", path);
+        exit(1);
+    }
+    int bufferSize = 1000000000;
+    char *buffer = (char *)malloc(sizeof(char) * bufferSize);
+
+    char *record, *line;
+    line = fgets(buffer, bufferSize, fstream);
+    record = strtok(line, ",\n");
+
+    int num_constraints = atoi(record);
+    destroy_Matrix(hpoly->A);
+    destroy_Matrix(hpoly->b);
+    hpoly->A = Matrix_new(num_constraints, hpoly->num_vars);
+    hpoly->b = Matrix_new(num_constraints, 1);
+    hpoly->num_constraints = num_constraints;
+
+    for (int i = 0; i < num_constraints; i++)
+    {
+        line = fgets(buffer, bufferSize, fstream);
+        record = strtok(line, ",\n");
+        for (int j = 0; j < hpoly->num_vars; j++)
+        {
+            hpoly->A->data[i * hpoly->num_vars + j] = atof(record);
+            record = strtok(NULL, ",\n");
+        }
+    }
+    for (int i = 0; i < num_constraints; i++)
+    {
+        line = fgets(buffer, bufferSize, fstream);
+        record = strtok(line, ",\n");
+        hpoly->b->data[i] = atof(record);
+    }
+
     free(buffer);
     fclose(fstream);
 }
