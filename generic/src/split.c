@@ -27,6 +27,8 @@ int element_is_in(struct Matrix *x, struct Interval *interval)
     int d = fmax(interval->lower_matrix->row, interval->lower_matrix->col);
     for (int i = 0; i < d; i++)
     {
+        if (isnan(x->data[i]))
+            return 0;
         if (x->data[i] < interval->lower_matrix->data[i])
         {
             return 0;

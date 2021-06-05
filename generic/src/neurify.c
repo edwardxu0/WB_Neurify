@@ -274,9 +274,12 @@ int main(int argc, char *argv[])
             long stack_limit = fmin(l.rlim_cur, l.rlim_max);
             if (MAX_DEPTH < 0)
             {
-                MAX_DEPTH = stack_limit / (wrong_node_length * 10);
-                fprintf(stderr, "WARNING: positive max depth not specified. Using estimated max depth for current stack limit.\n");
-                fprintf(stderr, "         The estimated max depth is %d for the current stack limit %.2f MB.\n", MAX_DEPTH, stack_limit / 1000000.0);
+                if (wrong_node_length != 0)
+                {
+                    MAX_DEPTH = stack_limit / (wrong_node_length * 10);
+                    fprintf(stderr, "WARNING: positive max depth not specified. Using estimated max depth for current stack limit.\n");
+                    fprintf(stderr, "         The estimated max depth is %d for the current stack limit %.2f MB.\n", MAX_DEPTH, stack_limit / 1000000.0);
+                }
             }
             long long max_stack_size = ((long long)MAX_DEPTH * wrong_node_length * 10);
             if (max_stack_size > stack_limit)
