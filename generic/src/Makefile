@@ -2,7 +2,7 @@ CC=gcc
 OPENBLAS_HOME=/opt/OpenBLAS
 CFLAGS=-c -Wall
 LDFLAGS=-L$(OPENBLAS_HOME)/lib -lopenblas -lpthread -lm 
-LPFLAGS=-llpsolve55 -lcolamd -ldl -lm 
+LPFLAGS=-llpsolve55 -ldl -lm 
 INCLUDE_FLAGS=-I$(OPENBLAS_HOME)/include/
 
 all: neurify
