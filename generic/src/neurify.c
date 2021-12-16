@@ -34,6 +34,7 @@ static struct argp_option options[] = {
     {"max_depth", 'd', "MAXDEPTH", 0, "The maximum depth to explore"},
     {"max_thread", 't', "MAXTHREAD", 0, "The max number of threads to use"},
     {0, 0, 0, 0, "Logging options:"},
+    {"err_node_size", 'e', "ERRNODESIZE", 0, "The size for ERR_NODE"},
     {"verbose", 'v', 0, 0, "Produce verbose output"},
     {0}};
 
@@ -49,6 +50,7 @@ struct arguments
     float gamma_lb;
     float gamma_ub;
     int gamma_static;
+    int err_node_size;
 };
 
 static error_t parse_opt(int key, char *arg, struct argp_state *state)
@@ -108,6 +110,9 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state)
     case 't':
         MAX_THREAD = atoi(arg);
         break;
+    case 'e':
+        arguments->err_node_size = atoi(arg);
+        break;
     case 'v':
         NEED_PRINT = 1;
         break;
@@ -140,6 +145,7 @@ int main(int argc, char *argv[])
     arguments.gamma_lb = -INFINITY;
     arguments.gamma_ub = INFINITY;
     arguments.gamma_static = 0;
+    arguments.err_node_size = 0;
     argp_parse(&argp, argc, argv, 0, 0, &arguments);
 
     printf("network: %s\n", arguments.network);
@@ -185,7 +191,14 @@ int main(int argc, char *argv[])
     {
         sigs[i] = -1;
     }
-    ERR_NODE = max_wrong_node_length;
+    if (arguments.err_node_size <= 0)
+    {
+        ERR_NODE = max_wrong_node_length;
+    }
+    else
+    {
+        ERR_NODE = arguments.err_node_size;
+    }
 
     load_inputs(arguments.input, inputSize, input_matrix->data);
     if (arguments.input_interval != NULL)
@@ -251,7 +264,14 @@ int main(int argc, char *argv[])
                                                    grad,
                                                    wrong_nodes,
                                                    &wrong_node_length);
-        ERR_NODE = wrong_node_length;
+        if (arguments.err_node_size == -1)
+        {
+            ERR_NODE = (wrong_node_length + ERR_NODE) / 2;
+        }
+        else if (arguments.err_node_size == -2)
+        {
+            ERR_NODE = (wrong_node_length + ERR_NODE) / 3 + wrong_node_length;
+        }
 
         printf("One shot approximation:\n");
         printf("upper_matrix:");

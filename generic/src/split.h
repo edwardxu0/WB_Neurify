@@ -50,6 +50,7 @@ struct direct_run_check_conv_lp_args
 
 int check(struct NNet *nnet, struct Interval *output);
 int check1(struct NNet *nnet, struct Matrix *output);
+void check_adv1(struct NNet *nnet, struct Matrix *adv);
 
 int forward_prop_interval_equation_conv_lp(struct NNet *nnet,
 										   struct Interval *input,
