@@ -312,9 +312,12 @@ int forward_prop_interval_equation_conv_lp(struct NNet *nnet,
                                                      0,
                                                      &objective_value,
                                                      input_matrix->data);
-                    if (!isUnsat)
+                    if (isUnsat <= 0)
                     {
                         need_to_split = 1;
+                    }
+                    if (isUnsat == 0)
+                    {
                         if (NEED_PRINT)
                         {
                             printf("target:%d, sig:%d, node:%d--Objective value: %f\n",
@@ -342,9 +345,12 @@ int forward_prop_interval_equation_conv_lp(struct NNet *nnet,
                                                      1,
                                                      &objective_value,
                                                      input_matrix->data);
-                    if (!isUnsat)
+                    if (isUnsat <= 0)
                     {
                         need_to_split = 1;
+                    }
+                    if (isUnsat == 0)
+                    {
                         if (NEED_PRINT)
                         {
                             printf("target:%d, sig:%d, node:%d--Objective value: %f\n",

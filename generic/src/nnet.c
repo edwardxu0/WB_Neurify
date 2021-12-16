@@ -420,6 +420,7 @@ void set_input_constraints(struct Interval *input,
     {
         set_bounds(lp, var, input->lower_matrix->data[var - 1], input->upper_matrix->data[var - 1]);
     }
+    set_bounds_tighter(lp, TRUE);
 }
 
 void set_hpoly_input_constraints(struct HPoly *hpoly,
@@ -464,14 +465,15 @@ void set_node_constraints(lprec *lp,
     set_add_rowmode(lp, FALSE);
 }
 
-float set_output_constraints(lprec *lp,
-                             float *equation,
-                             int start_place,
-                             int inputSize,
-                             int is_max,
-                             float *output,
-                             float *input_prev)
+int set_output_constraints(lprec *lp_,
+                           float *equation,
+                           int start_place,
+                           int inputSize,
+                           int is_max,
+                           float *output,
+                           float *input_prev)
 {
+    lprec *lp = copy_lp(lp_);
     int unsat = 1;
     REAL row[inputSize + 1];
     memset(row, 0, (inputSize + 1) * sizeof(REAL));
@@ -492,11 +494,11 @@ float set_output_constraints(lprec *lp,
     }
     set_add_rowmode(lp, FALSE);
 
-    // set_obj_fnex(lp, inputSize + 1, row, NULL);
     set_obj_fn(lp, row);
+    set_timeout(lp, 30);
 
     int ret = solve(lp);
-    if (ret == OPTIMAL)
+    if (ret == OPTIMAL || ret == SUBOPTIMAL)
     {
         *output = get_objective(lp) + equation[inputSize + start_place];
         get_variables(lp, row);
@@ -506,8 +508,17 @@ float set_output_constraints(lprec *lp,
         }
         unsat = 0;
     }
+    else if (ret == TIMEOUT)
+    {
+        unsat = -1;
+    }
+    else if (ret != INFEASIBLE)
+    {
+        printf("Abort - Unexpected LP solver return value: %d \n", ret);
+        exit(1);
+    }
 
-    del_constraint(lp, get_Nrows(lp));
+    delete_lp(lp);
 
     return unsat;
 }

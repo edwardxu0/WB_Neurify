@@ -92,7 +92,7 @@ void set_hpoly_input_constraints(struct HPoly *hpoly, lprec *lp, int inputSize);
 
 void set_node_constraints(lprec *lp, float *equation, int start, int sig, int inputSize);
 
-float set_output_constraints(lprec *lp, float *equation, int start, int inputSize, int is_max, float *output, float *input_prev);
+int set_output_constraints(lprec *lp, float *equation, int start, int inputSize, int is_max, float *output, float *input_prev);
 
 int evaluate_conv(struct NNet *network, struct Matrix *input, struct Matrix *output);
 
