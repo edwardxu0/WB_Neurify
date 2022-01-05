@@ -11,6 +11,8 @@
 
 #include "split.h"
 
+pthread_mutex_t lock;
+
 int MAX_DEPTH = -1;
 int MAX_THREAD = 0;
 int NEED_PRINT = 0;

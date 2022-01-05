@@ -32,7 +32,6 @@ extern int max_depth_exceeded;
 extern int progress_list[PROGRESS_DEPTH];
 extern int total_progress[PROGRESS_DEPTH];
 
-pthread_mutex_t lock;
 extern int count;
 
 struct direct_run_check_conv_lp_args
