@@ -395,6 +395,13 @@ int direct_run_check_conv_lp(struct NNet *nnet,
                              lprec *lp,
                              int depth)
 {
+
+    //WBs
+    clock_t time_start, time_end;
+    double cpu_time_used;
+    time_start = clock();
+    //WBe
+
     pthread_mutex_lock(&lock);
     if (adv_found)
     {
@@ -425,6 +432,13 @@ int direct_run_check_conv_lp(struct NNet *nnet,
         fprintf(stderr, "\n");
         pthread_mutex_unlock(&lock);
     }
+
+    //WBs
+    time_end = clock();
+	cpu_time_used = ((double) (time_end - time_start)) / CLOCKS_PER_SEC;
+	time_t now; time(&now);
+	printf("%.19s WB(neurify): split took %f seconds.\n", ctime(&now), cpu_time_used);
+    //WBe
 
     if (isOverlap)
     {

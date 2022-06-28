@@ -14,6 +14,9 @@
 #include <string.h>
 #include <stdlib.h>
 #include <sys/resource.h>
+//WBs
+#include <time.h>
+//WBe
 
 #include "hpoly.h"
 #include "interval.h"
@@ -134,6 +137,11 @@ static struct argp argp = {options, parse_opt, 0, 0};
 
 int main(int argc, char *argv[])
 {
+    //WBs
+    time_t now; now = time(&now);
+    printf("%.19s WB(neurify): verifier starts here.\n ", ctime(&now));
+    //WBe
+    
     struct arguments arguments;
     arguments.network = NULL;
     arguments.input = NULL;
@@ -289,6 +297,11 @@ int main(int argc, char *argv[])
 
             printf("total wrong nodes: %d\n", wrong_node_length);
 
+            //WBs
+            time_t now; now = time(&now);
+            printf("%.19s WB(neurify): %d unstable ReLUs.\n ", ctime(&now), wrong_node_length);
+            //WBe
+
             struct rlimit l;
             getrlimit(RLIMIT_STACK, &l);
             long stack_limit = fmin(l.rlim_cur, l.rlim_max);
@@ -328,6 +341,13 @@ int main(int argc, char *argv[])
                                                depth);
             delete_lp(lp);
         }
+        //WBs
+        else{
+            time_t now; now = time(&now);
+            printf("%.19s WB(neurify): one shot proof. No split needed.\n ", ctime(&now));
+			printf("%.19s WB(neurify): 0 unstable ReLUs.\n ", ctime(&now));
+        }
+        //WBe
     }
     else
     {
@@ -339,6 +359,11 @@ int main(int argc, char *argv[])
                   (float)(finish_time.tv_usec - start_time.tv_usec)) /
                  1000000;
 
+    //WBs
+    now = time(&now);
+    printf("%.19s WB(neurify): verifier ends here.\n ", ctime(&now));
+    //WBe
+    
     if (!max_depth_exceeded && !isOverlap && !adv_found)
     {
         printf("Proved.\n");
